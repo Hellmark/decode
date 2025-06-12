@@ -1,4 +1,6 @@
 // main.qml (closeTab logic wired in TabView)
+import QtQuick 2.0
+import QtQuick.Controls
 
 TabView {
     id: tabView
