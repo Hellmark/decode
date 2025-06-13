@@ -34,6 +34,7 @@ public slots:
     void undoLastChange();
     void redoLastChange();
     void encodeCurrentText(const QString &method);
+    void decodeCurrentText(const QString &method);
     void saveAll();
 
 private:
@@ -75,6 +76,7 @@ private:
     void connectSignals();
     void markModified(int index, bool modified);
     QString encodeText(const QString &input, const QString &method);
+    QString decodeText(const QString &input, const QString &method);
     void updateRecentFilesMenu();
     void loadFile(const QString &filePath);
     void saveRecentFiles();

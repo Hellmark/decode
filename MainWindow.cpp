@@ -25,6 +25,7 @@
 #include <QClipboard>
 #include <QGuiApplication>
 
+
 //Includes for the codecs
 #include "encoders/Base64Codec.h"
 #include "encoders/Rot13.h"
@@ -258,6 +259,27 @@ void MainWindow::encodeCurrentText(const QString &encoderName) {
     editor->setPlainText(result);
     markModified(index, true);
 }
+
+void MainWindow::decodeCurrentText(const QString &name) {
+    int index = tabWidget->currentIndex();
+    if (!tabDataMap.contains(index)) return;
+
+    QString original = tabDataMap[index].editor->toPlainText();
+    QString result;
+
+    if (name == "Base64") result = Base64Codec::transform(original, false);
+    else if (name == "Binary") result = BinaryCodec::transform(original, false);
+    else if (name == "Caesar") { bool ok; int shift = QInputDialog::getInt(this, "Caesar Shift", "Enter shift value:", 3, -25, 25, 1, &ok); if (ok){result = CaesarCipher::transform(original, shift, name != "Caesar");}}
+    else if (name == "ROT13") result = Rot13::transform(original);
+    else if (name == "Morse") result = MorseCodec::transform(original, false);
+    else if (name == "Atbash") result = Atbash::transform(original);
+    else if (name == "Pig Latin") result = PigLatin::transform(original, false);
+    else return;
+
+    tabDataMap[index].editor->setPlainText(result);
+    markModified(index, true);
+}
+
 
 void MainWindow::openFile() {
     QString filePath = QFileDialog::getOpenFileName(this, "Open File");
