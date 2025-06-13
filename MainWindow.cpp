@@ -22,7 +22,10 @@
 #include <QCheckBox>
 #include <QPushButton>
 #include <QLabel>
+#include <QClipboard>
+#include <QGuiApplication>
 
+//Includes for the codecs
 #include "encoders/Base64Codec.h"
 #include "encoders/Rot13.h"
 #include "encoders/CaesarCipher.h"
@@ -42,102 +45,148 @@ MainWindow::MainWindow(QWidget *parent)
 void MainWindow::setupUI() {
     tabWidget = new QTabWidget(this);
     tabWidget->setTabsClosable(true);
-    connect(tabWidget, &QTabWidget::tabCloseRequested, this, &MainWindow::closeTab);
     setCentralWidget(tabWidget);
 
-    QToolBar *toolbar = addToolBar("Toolbar");
+    codecToolbar = addToolBar("Codec Toolbar");
     encoderSelector = new QComboBox;
-    encoderSelector->addItems({"Base64", "Rot13", "Caesar", "Binary", "PigLatin", "Atbash", "Morse"});
-    toolbar->addWidget(encoderSelector);
-
-    decodeCheckBox = new QCheckBox("Decode");
-    toolbar->addWidget(decodeCheckBox);
+    encoderSelector->addItems({"Base64", "Binary", "Caesar", "ROT13", "Morse", "Atbash", "Pig Latin"});
+    codecToolbar->addWidget(encoderSelector);
 
     QPushButton *applyButton = new QPushButton("Apply");
-    toolbar->addWidget(applyButton);
+    codecToolbar->addWidget(applyButton);
     connect(applyButton, &QPushButton::clicked, this, [this]() {
         encodeCurrentText(encoderSelector->currentText());
     });
 
-    QMenu *fileMenu = menuBar()->addMenu("File");
-    QAction *newTabAction = fileMenu->addAction("New Tab");
-    QAction *openAction = fileMenu->addAction("Open");
+    cursorLabel = new QLabel("Ln 1, Col 1");
+    statusBar()->addPermanentWidget(cursorLabel);
 
-    QMenu *recentMenu = fileMenu->addMenu("Recent Files");
+    // Main toolbar
+    mainToolbar = addToolBar("Main Toolbar");
+
+    QAction *newAction = new QAction("New", this);
+    connect(newAction, &QAction::triggered, this, &MainWindow::newTab);
+    mainToolbar->addAction(newAction);
+
+    QAction *openAction = new QAction("Open", this);
+    connect(openAction, &QAction::triggered, this, &MainWindow::openFile);
+    mainToolbar->addAction(openAction);
+
+    QAction *saveAction = new QAction("Save", this);
+    connect(saveAction, &QAction::triggered, [this]() {
+        int index = tabWidget->currentIndex();
+        saveFile(index);
+    });
+    mainToolbar->addAction(saveAction);
+
+    QAction *saveAllAction = new QAction("Save All", this);
+    connect(saveAllAction, &QAction::triggered, this, &MainWindow::saveAll);
+    mainToolbar->addAction(saveAllAction);
+
+    mainToolbar->addSeparator();
+
+    copyAction = new QAction("Copy", this);
+    connect(copyAction, &QAction::triggered, [this]() {
+        int index = tabWidget->currentIndex();
+        if (tabDataMap.contains(index)) {
+            QGuiApplication::clipboard()->setText(tabDataMap[index].editor->textCursor().selectedText());
+        }
+    });
+    mainToolbar->addAction(copyAction);
+
+    cutAction = new QAction("Cut", this);
+    connect(cutAction, &QAction::triggered, [this]() {
+        int index = tabWidget->currentIndex();
+        if (tabDataMap.contains(index)) {
+            QTextCursor cursor = tabDataMap[index].editor->textCursor();
+            QGuiApplication::clipboard()->setText(cursor.selectedText());
+            cursor.removeSelectedText();
+        }
+    });
+    mainToolbar->addAction(cutAction);
+
+    pasteAction = new QAction("Paste", this);
+    connect(pasteAction, &QAction::triggered, [this]() {
+        int index = tabWidget->currentIndex();
+        if (tabDataMap.contains(index)) {
+            tabDataMap[index].editor->insertPlainText(QGuiApplication::clipboard()->text());
+        }
+    });
+    mainToolbar->addAction(pasteAction);
+
+    mainToolbar->addSeparator();
+
+    settingsAction = new QAction("Settings", this);
+    mainToolbar->addAction(settingsAction);
+
+    // Menus
+    QMenu *fileMenu = menuBar()->addMenu("File");
+    fileMenu->addAction(newAction);
+    fileMenu->addAction(openAction);
+
+    QMenu *recentMenu = new QMenu("Open Recent", this);
     for (int i = 0; i < 10; ++i) {
         recentFileActions[i] = new QAction(this);
         recentFileActions[i]->setVisible(false);
         connect(recentFileActions[i], &QAction::triggered, this, &MainWindow::openRecentFile);
         recentMenu->addAction(recentFileActions[i]);
     }
+    fileMenu->addMenu(recentMenu);
 
-    QAction *saveAction = fileMenu->addAction("Save");
-    QAction *saveAsAction = fileMenu->addAction("Save As");
+    fileMenu->addAction(saveAction);
+    fileMenu->addAction(saveAllAction);
     fileMenu->addSeparator();
-    QAction *quitAction = fileMenu->addAction("Quit");
+    QAction *quitAction = new QAction("Quit", this);
     connect(quitAction, &QAction::triggered, this, &QWidget::close);
-
-    connect(newTabAction, &QAction::triggered, this, &MainWindow::newTab);
-    connect(openAction, &QAction::triggered, this, &MainWindow::openFile);
-    connect(saveAction, &QAction::triggered, this, [this]() {
-        saveFile(tabWidget->currentIndex());
-    });
-    connect(saveAsAction, &QAction::triggered, this, &MainWindow::saveFileAs);
+    fileMenu->addAction(quitAction);
 
     QMenu *editMenu = menuBar()->addMenu("Edit");
-    QAction *undoAction = editMenu->addAction("Undo");
-    QAction *redoAction = editMenu->addAction("Redo");
+    editMenu->addAction(copyAction);
+    editMenu->addAction(cutAction);
+    editMenu->addAction(pasteAction);
     editMenu->addSeparator();
-    QAction *copyAction = editMenu->addAction("Copy");
-    QAction *cutAction = editMenu->addAction("Cut");
-    QAction *pasteAction = editMenu->addAction("Paste");
-    editMenu->addSeparator();
-    QAction *settingsAction = editMenu->addAction("Settings");
+    editMenu->addAction(settingsAction);
 
-    connect(undoAction, &QAction::triggered, this, &MainWindow::undoLastChange);
-    connect(redoAction, &QAction::triggered, this, &MainWindow::redoLastChange);
-    connect(copyAction, &QAction::triggered, this, [this]() {
-        int index = tabWidget->currentIndex();
-        if (tabDataMap.contains(index)) {
-            tabDataMap[index].editor->copy();
-        }
-    });
-    connect(cutAction, &QAction::triggered, this, [this]() {
-        int index = tabWidget->currentIndex();
-        if (tabDataMap.contains(index)) {
-            tabDataMap[index].editor->cut();
-        }
-    });
-    connect(pasteAction, &QAction::triggered, this, [this]() {
-        int index = tabWidget->currentIndex();
-        if (tabDataMap.contains(index)) {
-            tabDataMap[index].editor->paste();
-        }
-    });
-    connect(settingsAction, &QAction::triggered, this, []() {
-        QMessageBox::information(nullptr, "Settings", "Settings dialog not implemented yet.");
+    QMenu *viewMenu = menuBar()->addMenu("View");
+    toggleCodecToolbar = new QAction("Show Codec Toolbar", this);
+    toggleCodecToolbar->setCheckable(true);
+    toggleCodecToolbar->setChecked(true);
+    viewMenu->addAction(toggleCodecToolbar);
+    connect(toggleCodecToolbar, &QAction::toggled, codecToolbar, &QToolBar::setVisible);
+
+    toggleMainToolbar = new QAction("Show Main Toolbar", this);
+    toggleMainToolbar->setCheckable(true);
+    toggleMainToolbar->setChecked(true);
+    viewMenu->addAction(toggleMainToolbar);
+    connect(toggleMainToolbar, &QAction::toggled, mainToolbar, &QToolBar::setVisible);
+
+    toggleStatusBar = new QAction("Show Status Bar", this);
+    toggleStatusBar->setCheckable(true);
+    toggleStatusBar->setChecked(true);
+    viewMenu->addAction(toggleStatusBar);
+    connect(toggleStatusBar, &QAction::toggled, this, [this](bool visible){
+        statusBar()->setVisible(visible);
     });
 
-    QMenu *codecsMenu = menuBar()->addMenu("Codecs");
-    QMenu *encodeMenu = codecsMenu->addMenu("Encode");
-    QMenu *decodeMenu = codecsMenu->addMenu("Decode");
-    const QStringList codecs = {"Base64", "Rot13", "Caesar", "Binary", "PigLatin", "Atbash", "Morse"};
-    for (const QString &codec : codecs) {
-        QAction *enc = encodeMenu->addAction(codec);
-        connect(enc, &QAction::triggered, this, [this, codec]() {
-            decodeCheckBox->setChecked(false);
-            encodeCurrentText(codec);
+    QMenu *codecMenu = menuBar()->addMenu("Codecs");
+    QMenu *encodeMenu = codecMenu->addMenu("Encode");
+    QMenu *decodeMenu = codecMenu->addMenu("Decode");
+
+    for (int i = 0; i < encoderSelector->count(); ++i) {
+        QString name = encoderSelector->itemText(i);
+
+        QAction *encodeAction = new QAction(name, this);
+        connect(encodeAction, &QAction::triggered, this, [this, name]() {
+            encodeCurrentText(name);
         });
-        QAction *dec = decodeMenu->addAction(codec);
-        connect(dec, &QAction::triggered, this, [this, codec]() {
-            decodeCheckBox->setChecked(true);
-            encodeCurrentText(codec);
+        encodeMenu->addAction(encodeAction);
+
+        QAction *decodeAction = new QAction(name, this);
+        connect(decodeAction, &QAction::triggered, this, [this, name]() {
+            decodeCurrentText(name);
         });
+        decodeMenu->addAction(decodeAction);
     }
-
-    statusBar()->showMessage("Ready");
-    cursorLabel = new QLabel("Ln 1, Col 1");
-    statusBar()->addPermanentWidget(cursorLabel);
 }
 
 void MainWindow::connectSignals() {
@@ -269,6 +318,14 @@ void MainWindow::saveFile(int index) {
     file.close();
     markModified(index, false);
     tabWidget->setTabText(index, QFileInfo(path).fileName());
+}
+
+void MainWindow::saveAll() {
+    for (int i = 0; i < tabWidget->count(); ++i) {
+        if (tabDataMap.contains(i) && tabDataMap[i].isModified) {
+            saveFile(i);
+        }
+    }
 }
 
 void MainWindow::openRecentFile() {

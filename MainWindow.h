@@ -11,7 +11,11 @@
 #include <QStack>
 #include <QLabel>
 #include <QAction>
+#include <QToolBar>
+#include <QMenu>
 #include <QMessageBox>
+#include <QSettings>
+#include <QCloseEvent>
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -30,16 +34,32 @@ public slots:
     void undoLastChange();
     void redoLastChange();
     void encodeCurrentText(const QString &method);
+    void saveAll();
 
 private:
     QTabWidget *tabWidget;
     QComboBox *encoderSelector;
     QCheckBox *decodeCheckBox;
-    QStringList recentFiles;
-    QAction *recentFileActions[10];
-    QMenu *recentMenu;
     QLabel *cursorLabel;
 
+    QToolBar *codecToolbar;
+    QToolBar *mainToolbar;
+
+    QMenu *recentMenu;
+    QAction *recentFileActions[10];
+    QAction *saveAsAction;
+    QAction *undoAction;
+    QAction *redoAction;
+    QAction *copyAction;
+    QAction *cutAction;
+    QAction *pasteAction;
+    QAction *settingsAction;
+
+    QAction *toggleCodecToolbar;
+    QAction *toggleMainToolbar;
+    QAction *toggleStatusBar;
+
+    QStringList recentFiles;
 
     struct TabData {
         QTextEdit *editor;
@@ -61,8 +81,8 @@ private:
     void loadRecentFiles();
     void restoreSession();
     void saveSession();
-    void closeEvent(QCloseEvent *event) override;
     void updateCursorStatus();
-
+    void closeEvent(QCloseEvent *event) override;
 };
+
 #endif // MAINWINDOW_H
