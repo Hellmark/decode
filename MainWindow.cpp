@@ -305,10 +305,24 @@ void MainWindow::loadRecentFiles() {
 
 void MainWindow::saveSession() {
     QSettings settings("Hellmark Programming Group", "Decode");
+    settings.setValue("window/maximized", isMaximized());
+    settings.setValue("window/normalSize", normalGeometry().size());
+    settings.setValue("window/normalPos", normalGeometry().topLeft());
+
     settings.setValue("count", tabWidget->count());
     for (int i = 0; i < tabWidget->count(); ++i) {
         settings.setValue(QString("file_%1").arg(i), tabDataMap[i].filePath);
     }
+    if (settings.value("window/maximized", false).toBool()) {
+        showMaximized();
+    } else {
+        resize(settings.value("window/size", QSize(800, 600)).toSize());
+        move(settings.value("window/pos", QPoint(200, 200)).toPoint());
+    }
+
+    settings.setValue("ui/codecToolbarVisible", codecToolbar->isVisible());
+    settings.setValue("ui/mainToolbarVisible", mainToolbar->isVisible());
+    settings.setValue("ui/statusBarVisible", statusBar()->isVisible());
 }
 
 void MainWindow::restoreSession() {
@@ -318,6 +332,18 @@ void MainWindow::restoreSession() {
         QString file = settings.value(QString("file_%1").arg(i)).toString();
         if (!file.isEmpty()) loadFile(file);
     }
+    if (settings.value("window/maximized", false).toBool()) {
+        resize(settings.value("window/normalSize", QSize(800, 600)).toSize());
+        move(settings.value("window/normalPos", QPoint(200, 200)).toPoint());
+        showMaximized();
+    } else {
+        resize(settings.value("window/normalSize", QSize(800, 600)).toSize());
+        move(settings.value("window/normalPos", QPoint(200, 200)).toPoint());
+    }
+
+    codecToolbar->setVisible(settings.value("ui/codecToolbarVisible", true).toBool());
+    mainToolbar->setVisible(settings.value("ui/mainToolbarVisible", true).toBool());
+    statusBar()->setVisible(settings.value("ui/statusBarVisible", true).toBool());
 }
 
 void MainWindow::maybeSaveAndClose(int index) {
@@ -358,5 +384,6 @@ void MainWindow::redoLastChange() {
 
 void MainWindow::closeEvent(QCloseEvent *event) {
     saveSession();
+    QSettings settings("Hellmark Programming Group", "Decode");
     QMainWindow::closeEvent(event);
 }
