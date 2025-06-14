@@ -47,6 +47,7 @@ void MainWindow::setupUI() {
     tabWidget->setTabsClosable(true);
     setCentralWidget(tabWidget);
 
+    // Codec toolbar
     codecToolbar = addToolBar("Codec Toolbar");
     encoderSelector = new QComboBox;
     QPushButton *encodeButton = new QPushButton("Encode");
