@@ -46,9 +46,11 @@ void MainWindow::setupUI() {
     tabWidget = new QTabWidget(this);
     tabWidget->setTabsClosable(true);
     setCentralWidget(tabWidget);
+    connect(tabWidget, &QTabWidget::tabCloseRequested, this, &MainWindow::closeTab);
 
     // Codec toolbar
     codecToolbar = addToolBar("Codec Toolbar");
+    codecToolbar->setObjectName("codecToolbar");
     encoderSelector = new QComboBox;
     QPushButton *encodeButton = new QPushButton("Encode");
     QPushButton *decodeButton = new QPushButton("Decode");
@@ -69,6 +71,7 @@ void MainWindow::setupUI() {
 
     // Main toolbar
     mainToolbar = addToolBar("Main Toolbar");
+    mainToolbar->setObjectName("mainToolbar");
 
     QAction *newAction = new QAction(QIcon::fromTheme("document-new"), "New", this);
     connect(newAction, &QAction::triggered, this, &MainWindow::newTab);
@@ -414,6 +417,8 @@ void MainWindow::saveSession() {
     settings.setValue("window/maximized", isMaximized());
     settings.setValue("window/normalSize", normalGeometry().size());
     settings.setValue("window/normalPos", normalGeometry().topLeft());
+    settings.setValue("geometry", saveGeometry());
+    settings.setValue("windowState", saveState());
 
     settings.setValue("count", tabWidget->count());
     for (int i = 0; i < tabWidget->count(); ++i) {
@@ -450,6 +455,8 @@ void MainWindow::restoreSession() {
     codecToolbar->setVisible(settings.value("ui/codecToolbarVisible", true).toBool());
     mainToolbar->setVisible(settings.value("ui/mainToolbarVisible", true).toBool());
     statusBar()->setVisible(settings.value("ui/statusBarVisible", true).toBool());
+    restoreGeometry(settings.value("geometry").toByteArray());
+    restoreState(settings.value("windowState").toByteArray());
 }
 
 void MainWindow::maybeSaveAndClose(int index) {
