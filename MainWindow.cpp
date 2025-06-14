@@ -452,11 +452,19 @@ void MainWindow::restoreSession() {
         move(settings.value("window/normalPos", QPoint(200, 200)).toPoint());
     }
 
+    // Remember if the toolbars and statusbar is set to be visible or not.
     codecToolbar->setVisible(settings.value("ui/codecToolbarVisible", true).toBool());
     mainToolbar->setVisible(settings.value("ui/mainToolbarVisible", true).toBool());
     statusBar()->setVisible(settings.value("ui/statusBarVisible", true).toBool());
+
+    // remembers the position of the toolbars
     restoreGeometry(settings.value("geometry").toByteArray());
     restoreState(settings.value("windowState").toByteArray());
+
+    // make sure that there is at least one tab
+    if (tabWidget->count() == 0) {
+        newTab();
+    }
 }
 
 void MainWindow::maybeSaveAndClose(int index) {
