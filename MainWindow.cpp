@@ -49,24 +49,6 @@ void MainWindow::setupUI() {
     setCentralWidget(tabWidget);
     connect(tabWidget, &QTabWidget::tabCloseRequested, this, &MainWindow::closeTab);
 
-    // Codec toolbar
-    codecToolbar = addToolBar("Codec Toolbar");
-    codecToolbar->setObjectName("codecToolbar");
-    encoderSelector = new QComboBox;
-    QPushButton *encodeButton = new QPushButton("Encode");
-    QPushButton *decodeButton = new QPushButton("Decode");
-    encoderSelector->addItems({"Base64", "Binary", "Caesar", "ROT13", "Morse", "Atbash", "Pig Latin"});
-    codecToolbar->addWidget(encoderSelector);
-    codecToolbar->addWidget(encodeButton);
-    codecToolbar->addWidget(decodeButton);
-
-    connect(encodeButton, &QPushButton::clicked, this, [this]() {
-        encodeCurrentText(encoderSelector->currentText());
-    });
-    connect(decodeButton, &QPushButton::clicked, this, [this]() {
-        decodeCurrentText(encoderSelector->currentText());
-    });
-
     cursorLabel = new QLabel("Ln 1, Col 1");
     statusBar()->addPermanentWidget(cursorLabel);
 
@@ -147,6 +129,24 @@ void MainWindow::setupUI() {
     mainToolbar->addSeparator();
     mainToolbar->addAction(settingsAction);
 
+    // Codec toolbar
+    codecToolbar = addToolBar("Codec Toolbar");
+    codecToolbar->setObjectName("codecToolbar");
+    encoderSelector = new QComboBox;
+    QPushButton *encodeButton = new QPushButton("Encode");
+    QPushButton *decodeButton = new QPushButton("Decode");
+    encoderSelector->addItems({"Base64", "Binary", "Caesar", "ROT13", "Morse", "Atbash", "Pig Latin"});
+    codecToolbar->addWidget(encoderSelector);
+    codecToolbar->addWidget(encodeButton);
+    codecToolbar->addWidget(decodeButton);
+
+    connect(encodeButton, &QPushButton::clicked, this, [this]() {
+        encodeCurrentText(encoderSelector->currentText());
+    });
+    connect(decodeButton, &QPushButton::clicked, this, [this]() {
+        decodeCurrentText(encoderSelector->currentText());
+    });
+
     // Menus
     QMenu *fileMenu = menuBar()->addMenu("File");
     fileMenu->addAction(newAction);
@@ -167,6 +167,7 @@ void MainWindow::setupUI() {
     QAction *quitAction = new QAction("Quit", this);
     connect(quitAction, &QAction::triggered, this, &QWidget::close);
     fileMenu->addAction(quitAction);
+    quitAction->setShortcut(QKeySequence::Quit);
 
     QMenu *editMenu = menuBar()->addMenu("Edit");
     editMenu->addAction(undoAction);
@@ -179,17 +180,18 @@ void MainWindow::setupUI() {
     editMenu->addAction(settingsAction);
 
     QMenu *viewMenu = menuBar()->addMenu("View");
-    toggleCodecToolbar = new QAction("Show Codec Toolbar", this);
-    toggleCodecToolbar->setCheckable(true);
-    toggleCodecToolbar->setChecked(true);
-    viewMenu->addAction(toggleCodecToolbar);
-    connect(toggleCodecToolbar, &QAction::toggled, codecToolbar, &QToolBar::setVisible);
 
     toggleMainToolbar = new QAction("Show Main Toolbar", this);
     toggleMainToolbar->setCheckable(true);
     toggleMainToolbar->setChecked(true);
     viewMenu->addAction(toggleMainToolbar);
     connect(toggleMainToolbar, &QAction::toggled, mainToolbar, &QToolBar::setVisible);
+
+    toggleCodecToolbar = new QAction("Show Codec Toolbar", this);
+    toggleCodecToolbar->setCheckable(true);
+    toggleCodecToolbar->setChecked(true);
+    viewMenu->addAction(toggleCodecToolbar);
+    connect(toggleCodecToolbar, &QAction::toggled, codecToolbar, &QToolBar::setVisible);
 
     toggleStatusBar = new QAction("Show Status Bar", this);
     toggleStatusBar->setCheckable(true);
@@ -449,15 +451,24 @@ void MainWindow::saveSession() {
     settings.setValue("ui/codecToolbarVisible", codecToolbar->isVisible());
     settings.setValue("ui/mainToolbarVisible", mainToolbar->isVisible());
     settings.setValue("ui/statusBarVisible", statusBar()->isVisible());
+    settings.setValue("restorePreviousSession", restorePreviousSession);
+
 }
 
 void MainWindow::restoreSession() {
     QSettings settings("Hellmark Programming Group", "Decode");
     int count = settings.value("count").toInt();
-    for (int i = 0; i < count; ++i) {
-        QString file = settings.value(QString("file_%1").arg(i)).toString();
-        if (!file.isEmpty()) loadFile(file);
+
+    //Checks if session restoration is wanted, and loads the files if so
+    restorePreviousSession = settings.value("restorePreviousSession", true).toBool();
+    if (restorePreviousSession) {
+        for (int i = 0; i < count; ++i) {
+            QString file = settings.value(QString("file_%1").arg(i)).toString();
+            if (!file.isEmpty()) loadFile(file);
+        }
     }
+
+    // Saving Window position info, with logic to make sure that things don't get messed up if maximized.
     if (settings.value("window/maximized", false).toBool()) {
         resize(settings.value("window/normalSize", QSize(800, 600)).toSize());
         move(settings.value("window/normalPos", QPoint(200, 200)).toPoint());
@@ -553,21 +564,29 @@ void MainWindow::applyEditorSettings() {
 }
 
 void MainWindow::clearRecentFiles() {
+    QSettings settings("Hellmark Programming Group", "Decode");
     recentFiles.clear();
     updateRecentFilesMenu();
-    QSettings settings;
     settings.remove("recentFiles");
 }
 
 void MainWindow::resetUILayout() {
-    QSettings settings;
+
+    QSettings settings("Hellmark Programming Group", "Decode");
     settings.remove("geometry");
     settings.remove("windowState");
     settings.remove("mainToolbarVisible");
     settings.remove("codecToolbarVisible");
     settings.remove("statusBarVisible");
     settings.remove("maximized");
-    QMessageBox::information(this, "Reset UI", "The UI layout will be reset next time you start the app.");
+    addToolBar(Qt::TopToolBarArea, mainToolbar);
+    mainToolbar->show();
+    codecToolbar->show();
+    statusBar()->show();
+    restoreState(QByteArray());
+    resize(800, 600);
+
+    update();
 }
 
 void MainWindow::setFontSize(int size) {
