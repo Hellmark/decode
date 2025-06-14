@@ -70,37 +70,35 @@ void MainWindow::setupUI() {
     // Main toolbar
     mainToolbar = addToolBar("Main Toolbar");
 
-    QAction *newAction = new QAction("New", this);
+    QAction *newAction = new QAction(QIcon::fromTheme("document-new"), "New", this);
     connect(newAction, &QAction::triggered, this, &MainWindow::newTab);
-    mainToolbar->addAction(newAction);
+    newAction->setShortcut(QKeySequence::New);
 
-    QAction *openAction = new QAction("Open", this);
+    QAction *openAction = new QAction(QIcon::fromTheme("document-open"), "Open", this);
     connect(openAction, &QAction::triggered, this, &MainWindow::openFile);
-    mainToolbar->addAction(openAction);
+    openAction->setShortcut(QKeySequence::Open);
 
-    QAction *saveAction = new QAction("Save", this);
+    QAction *saveAction = new QAction(QIcon::fromTheme("document-save"), "Save", this);
     connect(saveAction, &QAction::triggered, [this]() {
         int index = tabWidget->currentIndex();
         saveFile(index);
     });
-    mainToolbar->addAction(saveAction);
+    saveAction->setShortcut(QKeySequence::Save);
 
-    QAction *saveAllAction = new QAction("Save All", this);
+    QAction *saveAllAction = new QAction(QIcon::fromTheme("document-save-all"), "Save All", this);
     connect(saveAllAction, &QAction::triggered, this, &MainWindow::saveAll);
-    mainToolbar->addAction(saveAllAction);
+    saveAllAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_S));
 
-    mainToolbar->addSeparator();
-
-    copyAction = new QAction("Copy", this);
+    QAction *copyAction = new QAction(QIcon::fromTheme("edit-copy"), "Copy", this);
     connect(copyAction, &QAction::triggered, [this]() {
         int index = tabWidget->currentIndex();
         if (tabDataMap.contains(index)) {
             QGuiApplication::clipboard()->setText(tabDataMap[index].editor->textCursor().selectedText());
         }
     });
-    mainToolbar->addAction(copyAction);
+    copyAction->setShortcut(QKeySequence::Copy);
 
-    cutAction = new QAction("Cut", this);
+    QAction *cutAction = new QAction(QIcon::fromTheme("edit-cut"), "Cut", this);
     connect(cutAction, &QAction::triggered, [this]() {
         int index = tabWidget->currentIndex();
         if (tabDataMap.contains(index)) {
@@ -109,20 +107,29 @@ void MainWindow::setupUI() {
             cursor.removeSelectedText();
         }
     });
-    mainToolbar->addAction(cutAction);
+    cutAction->setShortcut(QKeySequence::Cut);
 
-    pasteAction = new QAction("Paste", this);
+    QAction *pasteAction = new QAction(QIcon::fromTheme("edit-paste"), "Paste", this);
     connect(pasteAction, &QAction::triggered, [this]() {
         int index = tabWidget->currentIndex();
         if (tabDataMap.contains(index)) {
             tabDataMap[index].editor->insertPlainText(QGuiApplication::clipboard()->text());
         }
     });
-    mainToolbar->addAction(pasteAction);
+    pasteAction->setShortcut(QKeySequence::Paste);
 
+    QAction *settingsAction = new QAction(QIcon::fromTheme("preferences-system"), "Settings", this);
+    settingsAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_Comma));
+
+    mainToolbar->addAction(newAction);
+    mainToolbar->addAction(openAction);
+    mainToolbar->addAction(saveAction);
+    mainToolbar->addAction(saveAllAction);
     mainToolbar->addSeparator();
-
-    settingsAction = new QAction("Settings", this);
+    mainToolbar->addAction(copyAction);
+    mainToolbar->addAction(cutAction);
+    mainToolbar->addAction(pasteAction);
+    mainToolbar->addSeparator();
     mainToolbar->addAction(settingsAction);
 
     // Menus
