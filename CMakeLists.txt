@@ -14,6 +14,8 @@ add_executable(Decode
     main.cpp
     MainWindow.cpp
     MainWindow.h
+    SettingsDialog.cpp
+    SettingsDialog.h
     encoders/Atbash.cpp
     encoders/Atbash.h
     encoders/Base64Codec.cpp

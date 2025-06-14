@@ -1,4 +1,5 @@
 #include "MainWindow.h"
+#include "SettingsDialog.h"
 #include <QVBoxLayout>
 #include <QToolBar>
 #include <QStatusBar>
@@ -92,6 +93,13 @@ void MainWindow::setupUI() {
     connect(saveAllAction, &QAction::triggered, this, &MainWindow::saveAll);
     saveAllAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_S));
 
+    QAction *undoAction = new QAction(QIcon::fromTheme("edit-undo"), "Undo", this);
+    connect(undoAction, &QAction::triggered, this, &MainWindow::undoLastChange);
+    undoAction->setShortcut(QKeySequence::Undo);
+    QAction *redoAction = new QAction(QIcon::fromTheme("edit-redo"), "Redo", this);
+    connect(redoAction, &QAction::triggered, this, &MainWindow::redoLastChange);
+    redoAction->setShortcut(QKeySequence::Redo);
+
     QAction *copyAction = new QAction(QIcon::fromTheme("edit-copy"), "Copy", this);
     connect(copyAction, &QAction::triggered, [this]() {
         int index = tabWidget->currentIndex();
@@ -122,6 +130,7 @@ void MainWindow::setupUI() {
     pasteAction->setShortcut(QKeySequence::Paste);
 
     QAction *settingsAction = new QAction(QIcon::fromTheme("preferences-system"), "Settings", this);
+    connect(settingsAction, &QAction::triggered, this, &MainWindow::openSettingsDialog);
     settingsAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_Comma));
 
     mainToolbar->addAction(newAction);
@@ -132,6 +141,9 @@ void MainWindow::setupUI() {
     mainToolbar->addAction(copyAction);
     mainToolbar->addAction(cutAction);
     mainToolbar->addAction(pasteAction);
+    mainToolbar->addSeparator();
+    mainToolbar->addAction(undoAction);
+    mainToolbar->addAction(redoAction);
     mainToolbar->addSeparator();
     mainToolbar->addAction(settingsAction);
 
@@ -157,6 +169,9 @@ void MainWindow::setupUI() {
     fileMenu->addAction(quitAction);
 
     QMenu *editMenu = menuBar()->addMenu("Edit");
+    editMenu->addAction(undoAction);
+    editMenu->addAction(redoAction);
+    editMenu->addSeparator();
     editMenu->addAction(copyAction);
     editMenu->addAction(cutAction);
     editMenu->addAction(pasteAction);
@@ -507,4 +522,85 @@ void MainWindow::closeEvent(QCloseEvent *event) {
     saveSession();
     QSettings settings("Hellmark Programming Group", "Decode");
     QMainWindow::closeEvent(event);
+}
+
+void MainWindow::openSettingsDialog() {
+    SettingsDialog dialog(this);
+    dialog.setFont(currentFont);
+    dialog.setFontSize(currentFont.pointSize());
+    dialog.setTabSize(currentTabSize);  // corrected
+    dialog.setRestoreSession(restorePreviousSession);  // corrected
+
+    connect(&dialog, &SettingsDialog::clearRecentFiles, this, &MainWindow::clearRecentFiles);
+    connect(&dialog, &SettingsDialog::resetUILayout, this, &MainWindow::resetUILayout);
+
+    if (dialog.exec() == QDialog::Accepted) {
+        currentFont = dialog.getFont();
+        currentTabSize = dialog.getTabSize();  // corrected
+        restorePreviousSession = dialog.shouldRestoreSession();  // corrected
+        applyEditorSettings();
+    }
+}
+
+void MainWindow::applyEditorSettings() {
+    for (auto &tab : tabDataMap) {
+        if (tab.editor) {
+            tab.editor->setFont(currentFont);
+            QFontMetrics metrics(currentFont);
+            tab.editor->setTabStopDistance(currentTabSize * metrics.horizontalAdvance(' '));
+        }
+    }
+}
+
+void MainWindow::clearRecentFiles() {
+    recentFiles.clear();
+    updateRecentFilesMenu();
+    QSettings settings;
+    settings.remove("recentFiles");
+}
+
+void MainWindow::resetUILayout() {
+    QSettings settings;
+    settings.remove("geometry");
+    settings.remove("windowState");
+    settings.remove("mainToolbarVisible");
+    settings.remove("codecToolbarVisible");
+    settings.remove("statusBarVisible");
+    settings.remove("maximized");
+    QMessageBox::information(this, "Reset UI", "The UI layout will be reset next time you start the app.");
+}
+
+void MainWindow::setFontSize(int size) {
+    currentFont.setPointSize(size);
+    applyEditorSettings();
+}
+
+int MainWindow::getFontSize() const {
+    return currentFont.pointSize();
+}
+
+void MainWindow::setTabSize(int size) {
+    currentTabSize = size;
+    applyEditorSettings();
+}
+
+int MainWindow::getTabSize() const {
+    return currentTabSize;
+}
+
+void MainWindow::setRestoreSession(bool value) {
+    restorePreviousSession = value;
+}
+
+bool MainWindow::shouldRestoreSession() const {
+    return restorePreviousSession;
+}
+
+QFont MainWindow::getFont() const {
+    return currentFont;
+}
+
+void MainWindow::setFont(const QFont &font) {
+    currentFont = font;
+    applyEditorSettings();
 }

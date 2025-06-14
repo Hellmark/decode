@@ -37,6 +37,21 @@ public slots:
     void decodeCurrentText(const QString &method);
     void saveAll();
 
+    void setFontSize(int size);
+    int getFontSize() const;
+
+    void setTabSize(int size);
+    int getTabSize() const;
+
+    void setRestoreSession(bool restore);
+    bool shouldRestoreSession() const;
+
+    QFont getFont() const;
+    void setFont(const QFont &f);
+
+    void clearRecentFiles();
+    void resetUILayout();
+
 private:
     QTabWidget *tabWidget;
     QComboBox *encoderSelector;
@@ -64,6 +79,13 @@ private:
 
     QStringList recentFiles;
 
+    QFont currentFont;
+    int currentFontSize;
+    int currentTabSize;
+    bool restorePreviousSession;
+
+    QSettings settings;
+
     struct TabData {
         QTextEdit *editor;
         QString filePath;
@@ -87,6 +109,11 @@ private:
     void saveSession();
     void updateCursorStatus();
     void closeEvent(QCloseEvent *event) override;
+    void applyEditorSettings();
+
+    private slots:
+        void openSettingsDialog();
+
 };
 
 #endif // MAINWINDOW_H
