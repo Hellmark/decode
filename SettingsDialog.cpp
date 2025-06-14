@@ -19,10 +19,6 @@ SettingsDialog::SettingsDialog(QWidget *parent) : QDialog(parent) {
     connect(fontButton, &QPushButton::clicked, this, &SettingsDialog::chooseFont);
     formLayout->addRow("Font:", fontButton);
 
-    fontSizeSpin = new QSpinBox;
-    fontSizeSpin->setRange(6, 48);
-    formLayout->addRow("Font Size:", fontSizeSpin);
-
     tabSizeSpin = new QSpinBox;
     tabSizeSpin->setRange(2, 16);
     formLayout->addRow("Tab Size:", tabSizeSpin);
@@ -50,8 +46,14 @@ SettingsDialog::SettingsDialog(QWidget *parent) : QDialog(parent) {
     });
 
     connect(resetUILayoutButton, &QPushButton::clicked, this, [this]() {
-        if (QMessageBox::question(this, "Confirm", "Reset UI layout to default?") == QMessageBox::Yes)
+        if (QMessageBox::question(this, "Confirm", "Reset UI layout to default?") == QMessageBox::Yes) {
+            QFont defaultFont = QFont("Monospace", 10);
+            int defaultTabSize = 4;
+            selectedFont = defaultFont;
+            fontButton->setText(selectedFont.family());
+            tabSizeSpin->setValue(defaultTabSize);
             emit resetUILayout();
+        }
     });
 }
 
@@ -71,14 +73,6 @@ void SettingsDialog::setFont(const QFont &f) {
 
 QFont SettingsDialog::getFont() const {
     return selectedFont;
-}
-
-int SettingsDialog::getFontSize() const {
-    return fontSizeSpin->value();
-}
-
-void SettingsDialog::setFontSize(int size) {
-    fontSizeSpin->setValue(size);
 }
 
 int SettingsDialog::getTabSize() const {

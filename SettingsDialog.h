@@ -23,13 +23,11 @@ public:
     SettingsDialog(QWidget *parent = nullptr);
 
     void setFont(const QFont &font);
-    void setFontSize(int size);
     void setTabSize(int size);
     void setRestoreSession(bool restore);
 
     QFont getFont() const;
 
-    int getFontSize() const;
     int getTabSize() const;
     bool shouldRestoreSession() const;
 
@@ -40,7 +38,6 @@ signals:
 private:
     QFont selectedFont;
     QFontComboBox *fontCombo;
-    QSpinBox *fontSizeSpin;
     QSpinBox *tabSizeSpin;
     QCheckBox *restoreSessionCheck;
     QPushButton *fontButton;

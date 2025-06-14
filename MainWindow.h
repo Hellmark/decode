@@ -37,9 +37,6 @@ public slots:
     void decodeCurrentText(const QString &method);
     void saveAll();
 
-    void setFontSize(int size);
-    int getFontSize() const;
-
     void setTabSize(int size);
     int getTabSize() const;
 
@@ -80,7 +77,6 @@ private:
     QStringList recentFiles;
 
     QFont currentFont;
-    int currentFontSize;
     int currentTabSize;
     bool restorePreviousSession;
 
@@ -110,6 +106,7 @@ private:
     void updateCursorStatus();
     void closeEvent(QCloseEvent *event) override;
     void applyEditorSettings();
+
 
     private slots:
         void openSettingsDialog();

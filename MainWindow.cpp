@@ -226,6 +226,7 @@ void MainWindow::setupUI() {
         });
         decodeMenu->addAction(decodeAction);
     }
+    applyEditorSettings();
 }
 
 void MainWindow::connectSignals() {
@@ -538,22 +539,30 @@ void MainWindow::closeEvent(QCloseEvent *event) {
 void MainWindow::openSettingsDialog() {
     SettingsDialog dialog(this);
     dialog.setFont(currentFont);
-    dialog.setFontSize(currentFont.pointSize());
-    dialog.setTabSize(currentTabSize);  // corrected
-    dialog.setRestoreSession(restorePreviousSession);  // corrected
+    dialog.setTabSize(currentTabSize);
+    dialog.setRestoreSession(restorePreviousSession);
 
     connect(&dialog, &SettingsDialog::clearRecentFiles, this, &MainWindow::clearRecentFiles);
     connect(&dialog, &SettingsDialog::resetUILayout, this, &MainWindow::resetUILayout);
 
     if (dialog.exec() == QDialog::Accepted) {
+        QSettings settings("Hellmark Programming Group", "Decode");
+        settings.setValue("editor/font", dialog.getFont());
+        settings.setValue("editor/tabSize", dialog.getTabSize());
+        //settings.setValue("editor/restoreSession", dialog.shouldRestoreSession());
         currentFont = dialog.getFont();
-        currentTabSize = dialog.getTabSize();  // corrected
-        restorePreviousSession = dialog.shouldRestoreSession();  // corrected
+        currentTabSize = dialog.getTabSize();
+        restorePreviousSession = dialog.shouldRestoreSession();
         applyEditorSettings();
     }
 }
 
 void MainWindow::applyEditorSettings() {
+    QSettings settings("Hellmark Programming Group", "Decode");
+    currentFont = settings.value("editor/font", QFont("Monospace", 10)).value<QFont>();
+    currentTabSize = settings.value("editor/tabSize", 4).toInt();
+    restorePreviousSession = settings.value("editor/restoreSession", true).toBool();
+
     for (auto &tab : tabDataMap) {
         if (tab.editor) {
             tab.editor->setFont(currentFont);
@@ -579,7 +588,10 @@ void MainWindow::resetUILayout() {
     settings.remove("codecToolbarVisible");
     settings.remove("statusBarVisible");
     settings.remove("maximized");
+    settings.remove("editor/font");
+    settings.remove("editor/tabSize");
     addToolBar(Qt::TopToolBarArea, mainToolbar);
+    addToolBar(Qt::TopToolBarArea, codecToolbar);
     mainToolbar->show();
     codecToolbar->show();
     statusBar()->show();
@@ -587,15 +599,10 @@ void MainWindow::resetUILayout() {
     resize(800, 600);
 
     update();
-}
 
-void MainWindow::setFontSize(int size) {
-    currentFont.setPointSize(size);
+    currentFont = QFont("Monospace", 10);
+    currentTabSize = 4;
     applyEditorSettings();
-}
-
-int MainWindow::getFontSize() const {
-    return currentFont.pointSize();
 }
 
 void MainWindow::setTabSize(int size) {
