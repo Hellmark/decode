@@ -25,7 +25,6 @@
 #include <QClipboard>
 #include <QGuiApplication>
 
-
 //Includes for the codecs
 #include "encoders/Base64Codec.h"
 #include "encoders/Rot13.h"
@@ -50,13 +49,18 @@ void MainWindow::setupUI() {
 
     codecToolbar = addToolBar("Codec Toolbar");
     encoderSelector = new QComboBox;
+    QPushButton *encodeButton = new QPushButton("Encode");
+    QPushButton *decodeButton = new QPushButton("Decode");
     encoderSelector->addItems({"Base64", "Binary", "Caesar", "ROT13", "Morse", "Atbash", "Pig Latin"});
     codecToolbar->addWidget(encoderSelector);
+    codecToolbar->addWidget(encodeButton);
+    codecToolbar->addWidget(decodeButton);
 
-    QPushButton *applyButton = new QPushButton("Apply");
-    codecToolbar->addWidget(applyButton);
-    connect(applyButton, &QPushButton::clicked, this, [this]() {
+    connect(encodeButton, &QPushButton::clicked, this, [this]() {
         encodeCurrentText(encoderSelector->currentText());
+    });
+    connect(decodeButton, &QPushButton::clicked, this, [this]() {
+        decodeCurrentText(encoderSelector->currentText());
     });
 
     cursorLabel = new QLabel("Ln 1, Col 1");
@@ -178,13 +182,19 @@ void MainWindow::setupUI() {
 
         QAction *encodeAction = new QAction(name, this);
         connect(encodeAction, &QAction::triggered, this, [this, name]() {
-            encodeCurrentText(name);
+            int index = tabWidget->currentIndex();
+            if (index >= 0 && tabDataMap.contains(index)) {
+                encodeCurrentText(name);
+            }
         });
         encodeMenu->addAction(encodeAction);
 
         QAction *decodeAction = new QAction(name, this);
         connect(decodeAction, &QAction::triggered, this, [this, name]() {
-            decodeCurrentText(name);
+            int index = tabWidget->currentIndex();
+            if (index >= 0 && tabDataMap.contains(index)) {
+                decodeCurrentText(name);
+            }
         });
         decodeMenu->addAction(decodeAction);
     }
@@ -235,46 +245,55 @@ void MainWindow::encodeCurrentText(const QString &encoderName) {
     QTextEdit *editor = tabDataMap[index].editor;
     QString text = editor->toPlainText();
     QString result;
-    bool decode = decodeCheckBox->isChecked();
 
     if (encoderName == "Base64") {
-        result = Base64Codec::transform(text, decode);
-    } else if (encoderName == "Rot13") {
+        result = Base64Codec::transform(text, false);
+    } else if (encoderName == "ROT13") {
         result = Rot13::transform(text);
     } else if (encoderName == "Caesar") {
         bool ok;
         int shift = QInputDialog::getInt(this, "Caesar Shift", "Shift: ", 3, -25, 25, 1, &ok);
-        if (ok) result = CaesarCipher::transform(text, shift, decode);
+        if (ok) result = CaesarCipher::transform(text, shift, false);
         else return;
     } else if (encoderName == "Binary") {
-        result = BinaryCodec::transform(text, decode);
+        result = BinaryCodec::transform(text, false);
     } else if (encoderName == "PigLatin") {
-        result = PigLatin::transform(text, decode);
+        result = PigLatin::transform(text, false);
     } else if (encoderName == "Atbash") {
         result = Atbash::transform(text);
     } else if (encoderName == "Morse") {
-        result = MorseCodec::transform(text, decode);
+        result = MorseCodec::transform(text, false);
     }
 
     editor->setPlainText(result);
     markModified(index, true);
 }
 
-void MainWindow::decodeCurrentText(const QString &name) {
+void MainWindow::decodeCurrentText(const QString &decoderName) {
     int index = tabWidget->currentIndex();
     if (!tabDataMap.contains(index)) return;
 
-    QString original = tabDataMap[index].editor->toPlainText();
+    QString text = tabDataMap[index].editor->toPlainText();
     QString result;
 
-    if (name == "Base64") result = Base64Codec::transform(original, false);
-    else if (name == "Binary") result = BinaryCodec::transform(original, false);
-    else if (name == "Caesar") { bool ok; int shift = QInputDialog::getInt(this, "Caesar Shift", "Enter shift value:", 3, -25, 25, 1, &ok); if (ok){result = CaesarCipher::transform(original, shift, name != "Caesar");}}
-    else if (name == "ROT13") result = Rot13::transform(original);
-    else if (name == "Morse") result = MorseCodec::transform(original, false);
-    else if (name == "Atbash") result = Atbash::transform(original);
-    else if (name == "Pig Latin") result = PigLatin::transform(original, false);
-    else return;
+    if (decoderName == "Base64") {
+        result = Base64Codec::transform(text, true);
+    } else if (decoderName == "ROT13") {
+        result = Rot13::transform(text);
+    } else if (decoderName == "Caesar") {
+        bool ok;
+        int shift = QInputDialog::getInt(this, "Caesar Shift", "Shift: ", 3, -25, 25, 1, &ok);
+        if (ok) result = CaesarCipher::transform(text, shift, true);
+        else return;
+    } else if (decoderName == "Binary") {
+        result = BinaryCodec::transform(text, true);
+    } else if (decoderName == "PigLatin") {
+        result = PigLatin::transform(text, true);
+    } else if (decoderName == "Atbash") {
+        result = Atbash::transform(text);
+    } else if (decoderName == "Morse") {
+        result = MorseCodec::transform(text, true);
+    }
 
     tabDataMap[index].editor->setPlainText(result);
     markModified(index, true);

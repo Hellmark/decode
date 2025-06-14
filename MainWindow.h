@@ -42,6 +42,8 @@ private:
     QComboBox *encoderSelector;
     QCheckBox *decodeCheckBox;
     QLabel *cursorLabel;
+    QPushButton *encodeButton;
+    QPushButton *decodeButton;
 
     QToolBar *codecToolbar;
     QToolBar *mainToolbar;
