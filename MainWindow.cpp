@@ -135,7 +135,7 @@ void MainWindow::setupUI() {
     encoderSelector = new QComboBox;
     QPushButton *encodeButton = new QPushButton("Encode");
     QPushButton *decodeButton = new QPushButton("Decode");
-    encoderSelector->addItems({"Base64", "Binary", "Caesar", "ROT13", "Morse", "Atbash", "Pig Latin"});
+    encoderSelector->addItems({"Base64", "Binary", "Caesar", "ROT13", "Morse", "Atbash", "Pig Latin", "AES"});
     codecToolbar->addWidget(encoderSelector);
     codecToolbar->addWidget(encodeButton);
     codecToolbar->addWidget(decodeButton);
@@ -292,6 +292,8 @@ void MainWindow::encodeCurrentText(const QString &encoderName) {
         result = Atbash::transform(text);
     } else if (encoderName == "Morse") {
         result = MorseCodec::transform(text, false);
+    } else if (decoderName == "AES") {
+        result = AESCodec::transform(text, false);
     }
 
     editor->setPlainText(result);
@@ -322,6 +324,8 @@ void MainWindow::decodeCurrentText(const QString &decoderName) {
         result = Atbash::transform(text);
     } else if (decoderName == "Morse") {
         result = MorseCodec::transform(text, true);
+    } else if (decoderName == "AES") {
+        result = AESCodec::transform(text, true);
     }
 
     tabDataMap[index].editor->setPlainText(result);
