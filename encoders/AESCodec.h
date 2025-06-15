@@ -3,7 +3,7 @@
 
 #include <QString>
 
-class AesCodec {
+class AESCodec {
 public:
     static QString encode(const QString &text, const QString &key);
     static QString decode(const QString &text, const QString &key);

@@ -1,4 +1,4 @@
-#include "AesCodec.h"
+#include "AESCodec.h"
 #include <QByteArray>
 #include <QCryptographicHash>
 #include <QDataStream>
@@ -12,7 +12,7 @@ static QByteArray deriveKey(const QString &password) {
     return QCryptographicHash::hash(password.toUtf8(), QCryptographicHash::Sha256).left(32);
 }
 
-QString AesCodec::encode(const QString &text, const QString &key) {
+QString AESCodec::encode(const QString &text, const QString &key) {
     QByteArray input = text.toUtf8();
     QByteArray output;
     QByteArray aesKey = deriveKey(key);
@@ -48,7 +48,7 @@ QString AesCodec::encode(const QString &text, const QString &key) {
     return output.toBase64();
 }
 
-QString AesCodec::decode(const QString &text, const QString &key) {
+QString AESCodec::decode(const QString &text, const QString &key) {
     QByteArray input = QByteArray::fromBase64(text.toUtf8());
     QByteArray output;
     QByteArray aesKey = deriveKey(key);

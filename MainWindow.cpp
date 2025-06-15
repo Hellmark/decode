@@ -34,6 +34,7 @@
 #include "encoders/PigLatin.h"
 #include "encoders/Atbash.h"
 #include "encoders/MorseCodec.h"
+#include "encoders/AESCodec.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent) {
@@ -292,8 +293,12 @@ void MainWindow::encodeCurrentText(const QString &encoderName) {
         result = Atbash::transform(text);
     } else if (encoderName == "Morse") {
         result = MorseCodec::transform(text, false);
-    } else if (decoderName == "AES") {
-        result = AESCodec::transform(text, false);
+    } else if (encoderName == "AES") {
+        bool ok;
+        QString key = QInputDialog::getText(this, "AES Key", "Enter encryption key:", QLineEdit::Password, "", &ok);
+        if (!ok || key.isEmpty()) return;
+        result = AESCodec::encode(text, key);
+
     }
 
     editor->setPlainText(result);
@@ -325,11 +330,16 @@ void MainWindow::decodeCurrentText(const QString &decoderName) {
     } else if (decoderName == "Morse") {
         result = MorseCodec::transform(text, true);
     } else if (decoderName == "AES") {
-        result = AESCodec::transform(text, true);
+        bool ok;
+        QString key = QInputDialog::getText(this, "AES Key", "Enter decryption key:", QLineEdit::Password, "", &ok);
+        if (!ok || key.isEmpty()) return;
+        result = AESCodec::decode(text, key);
     }
 
-    tabDataMap[index].editor->setPlainText(result);
-    markModified(index, true);
+    if (!result.isEmpty()) {
+        tabDataMap[index].editor->setPlainText(result);
+        markModified(index, true);
+    }
 }
 
 

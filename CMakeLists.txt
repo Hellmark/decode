@@ -11,8 +11,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
 
 find_package(OpenSSL REQUIRED)
-target_link_libraries(Decode PRIVATE OpenSSL::Crypto)
-
 
 add_executable(Decode
     main.cpp
@@ -20,6 +18,8 @@ add_executable(Decode
     MainWindow.h
     SettingsDialog.cpp
     SettingsDialog.h
+    encoders/AESCodec.cpp
+    encoders/AESCodec.h
     encoders/Atbash.cpp
     encoders/Atbash.h
     encoders/Base64Codec.cpp
@@ -36,4 +36,4 @@ add_executable(Decode
     encoders/Rot13.h
 )
 
-target_link_libraries(Decode PRIVATE Qt6::Core Qt6::Gui Qt6::Widgets)
+target_link_libraries(Decode PRIVATE Qt6::Core Qt6::Gui Qt6::Widgets OpenSSL::Crypto)
