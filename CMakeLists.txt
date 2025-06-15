@@ -10,6 +10,10 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
 
+find_package(OpenSSL REQUIRED)
+target_link_libraries(Decode PRIVATE OpenSSL::Crypto)
+
+
 add_executable(Decode
     main.cpp
     MainWindow.cpp
