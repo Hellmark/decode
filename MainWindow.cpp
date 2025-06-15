@@ -31,6 +31,7 @@
 #include "encoders/Rot13.h"
 #include "encoders/CaesarCipher.h"
 #include "encoders/BinaryCodec.h"
+#include "encoders/HexCodec.h"
 #include "encoders/PigLatin.h"
 #include "encoders/Atbash.h"
 #include "encoders/MorseCodec.h"
@@ -136,7 +137,7 @@ void MainWindow::setupUI() {
     encoderSelector = new QComboBox;
     QPushButton *encodeButton = new QPushButton("Encode");
     QPushButton *decodeButton = new QPushButton("Decode");
-    encoderSelector->addItems({"Base64", "Binary", "Caesar", "ROT13", "Morse", "Atbash", "Pig Latin", "AES"});
+    encoderSelector->addItems({"Base64", "Binary", "Hex", "Caesar", "ROT13", "Morse", "Atbash", "Pig Latin", "AES"});
     codecToolbar->addWidget(encoderSelector);
     codecToolbar->addWidget(encodeButton);
     codecToolbar->addWidget(decodeButton);
@@ -287,6 +288,8 @@ void MainWindow::encodeCurrentText(const QString &encoderName) {
         else return;
     } else if (encoderName == "Binary") {
         result = BinaryCodec::transform(text, false);
+    } else if (encoderName == "Hex") {
+        result = HexCodec::transform(text, false);
     } else if (encoderName == "PigLatin") {
         result = PigLatin::transform(text, false);
     } else if (encoderName == "Atbash") {
@@ -298,7 +301,6 @@ void MainWindow::encodeCurrentText(const QString &encoderName) {
         QString key = QInputDialog::getText(this, "AES Key", "Enter encryption key:", QLineEdit::Password, "", &ok);
         if (!ok || key.isEmpty()) return;
         result = AESCodec::encode(text, key);
-
     }
 
     editor->setPlainText(result);
@@ -323,6 +325,8 @@ void MainWindow::decodeCurrentText(const QString &decoderName) {
         else return;
     } else if (decoderName == "Binary") {
         result = BinaryCodec::transform(text, true);
+    } else if (decoderName == "Hex") {
+        result = HexCodec::transform(text, true);
     } else if (decoderName == "PigLatin") {
         result = PigLatin::transform(text, true);
     } else if (decoderName == "Atbash") {

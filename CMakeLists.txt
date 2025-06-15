@@ -26,6 +26,8 @@ add_executable(Decode
     encoders/Base64Codec.h
     encoders/BinaryCodec.cpp
     encoders/BinaryCodec.h
+    encoders/HexCodec.cpp
+    encoders/HexCodec.h
     encoders/CaesarCipher.cpp
     encoders/CaesarCipher.h
     encoders/MorseCodec.cpp
