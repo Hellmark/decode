@@ -9,8 +9,9 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
-
 find_package(OpenSSL REQUIRED)
+qt_add_resources(APP_RESOURCES "resources.qrc")
+
 
 add_executable(Decode
     main.cpp
@@ -36,6 +37,7 @@ add_executable(Decode
     encoders/PigLatin.h
     encoders/Rot13.cpp
     encoders/Rot13.h
+    ${APP_RESOURCES}
 )
 
 target_link_libraries(Decode PRIVATE Qt6::Core Qt6::Gui Qt6::Widgets OpenSSL::Crypto)
