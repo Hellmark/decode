@@ -49,7 +49,11 @@ void MainWindow::setupUI() {
     tabWidget = new QTabWidget(this);
     tabWidget->setTabsClosable(true);
     setCentralWidget(tabWidget);
-    connect(tabWidget, &QTabWidget::tabCloseRequested, this, &MainWindow::closeTab);
+    
+    connect(tabWidget, &QTabWidget::tabCloseRequested, this, [this](int index) {
+        QTextEdit *editor = qobject_cast<QTextEdit*>(tabWidget->widget(index));
+        closeTab(editor);
+    });
 
     cursorLabel = new QLabel("Ln 1, Col 1");
     statusBar()->addPermanentWidget(cursorLabel);
