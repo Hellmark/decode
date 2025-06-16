@@ -28,13 +28,15 @@ public:
     MainWindow(QWidget *parent = nullptr);
 
 public slots:
-    int newTab();
-    void closeTab(int index);
-    void saveFile(int index);
+    void newTab();
+    void closeTab(QTextEdit *editor);
+    void saveFile();
+    void saveFile(QTextEdit *editor);
     void saveFileAs();
+    void saveFileAs(QTextEdit *editor);
     void openFile();
     void openRecentFile();
-    void maybeSaveAndClose(int index);
+    void maybeSaveAndClose(QTextEdit *editor);
     void undoLastChange();
     void redoLastChange();
     void encodeCurrentText(const QString &method);
