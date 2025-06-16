@@ -540,7 +540,8 @@ void MainWindow::restoreSession() {
             } else {
                 // load from disk
                 if (!content.isEmpty()) {
-                    int index = tabWidget->currentIndex();  // latest tab added
+                    int index = newTab();
+                    tabDataMap[index].filePath = path;
                     tabDataMap[index].editor->setPlainText(content);
                     markModified(index, true);
                     tabWidget->setTabText(index, QFileInfo(path).fileName() + "*");
