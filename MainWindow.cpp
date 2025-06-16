@@ -532,11 +532,12 @@ void MainWindow::restoreSession() {
                 tabWidget->setTabText(index, "Untitled*");
             } else {
                 // load from disk
-                loadFile(path);
                 if (!content.isEmpty()) {
                     int index = tabWidget->currentIndex();  // latest tab added
                     tabDataMap[index].editor->setPlainText(content);
                     markModified(index, true);
+                } else {
+                    loadFile(path);
                 }
             }
         }
