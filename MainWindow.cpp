@@ -252,7 +252,7 @@ void MainWindow::updateCursorStatus() {
     cursorLabel->setText(QString("Ln %1, Col %2").arg(line).arg(col));
 }
 
-void MainWindow::newTab() {
+int MainWindow::newTab() {
     QTextEdit *editor = new QTextEdit(this);
     int index = tabWidget->addTab(editor, "Untitled");
     tabWidget->setCurrentIndex(index);
@@ -262,9 +262,11 @@ void MainWindow::newTab() {
     data.isModified = false;
     tabDataMap[index] = data;
     connect(editor, &QTextEdit::cursorPositionChanged, this, &MainWindow::updateCursorStatus);
-    connect(editor, &QTextEdit::textChanged, this, [this, index]() {
-        markModified(index, true);
+    connect(editor, &QTextEdit::textChanged, this, [this, editor]() {
+        markModified(editor, true);
     });
+
+    return index;
 }
 
 void MainWindow::markModified(int index, bool modified) {
@@ -275,6 +277,15 @@ void MainWindow::markModified(int index, bool modified) {
         tabWidget->setTabText(index, title + "*");
     } else if (!modified && title.endsWith("*")) {
         tabWidget->setTabText(index, title.left(title.length() - 1));
+    }
+}
+
+void MainWindow::markModified(QTextEdit *editor, bool modified) {
+    for (auto it = tabDataMap.begin(); it != tabDataMap.end(); ++it) {
+        if (it->editor == editor) {
+            markModified(it.key(), modified);
+            break;
+        }
     }
 }
 
@@ -374,7 +385,9 @@ void MainWindow::loadFile(const QString &filePath) {
     QString content = QTextStream(&file).readAll();
     newTab();
     int index = tabWidget->currentIndex();
+    tabDataMap[index].editor->blockSignals(true);
     tabDataMap[index].editor->setPlainText(content);
+    tabDataMap[index].editor->blockSignals(false);
     tabWidget->setTabText(index, QFileInfo(filePath).fileName());
     tabDataMap[index].filePath = filePath;
     markModified(index, false);
@@ -518,24 +531,19 @@ void MainWindow::restoreSession() {
             }
             if (path.isEmpty()) {
                 // Create new tab with content
-                int index = tabWidget->addTab(new QTextEdit, "Untitled");
-                QTextEdit *editor = qobject_cast<QTextEdit*>(tabWidget->widget(index));
-                editor->setPlainText(content);
-                editor->setFont(currentFont);
-                editor->setTabStopDistance(currentTabSize * QFontMetrics(currentFont).horizontalAdvance(' '));
-
-                TabData tabData;
-                tabData.editor = editor;
-                tabData.filePath.clear();
-                tabData.isModified = true;
-                tabDataMap[index] = tabData;
-                tabWidget->setTabText(index, "Untitled*");
+                if (!content.isEmpty()) {
+                    int index = newTab();
+                    tabDataMap[index].editor->setPlainText(content);
+                    markModified(index, true);
+                    tabWidget->setTabText(index, "Untitled*");
+                }
             } else {
                 // load from disk
                 if (!content.isEmpty()) {
                     int index = tabWidget->currentIndex();  // latest tab added
                     tabDataMap[index].editor->setPlainText(content);
                     markModified(index, true);
+                    tabWidget->setTabText(index, QFileInfo(path).fileName() + "*");
                 } else {
                     loadFile(path);
                 }
@@ -582,6 +590,11 @@ void MainWindow::maybeSaveAndClose(int index) {
     }
     tabDataMap.remove(index);
     tabWidget->removeTab(index);
+    QMap<int, TabData> newMap;
+    for (int i = 0; i < tabWidget->count(); ++i) {
+        newMap[i] = tabDataMap.value(i >= index ? i + 1 : i);
+    }
+    tabDataMap = newMap;
 }
 
 void MainWindow::closeTab(int index) {

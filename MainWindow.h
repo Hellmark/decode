@@ -24,7 +24,7 @@ public:
     MainWindow(QWidget *parent = nullptr);
 
 public slots:
-    void newTab();
+    int newTab();
     void closeTab(int index);
     void saveFile(int index);
     void saveFileAs();
@@ -95,6 +95,7 @@ private:
     void setupUI();
     void connectSignals();
     void markModified(int index, bool modified);
+    void markModified(QTextEdit *editor, bool modified);
     QString encodeText(const QString &input, const QString &method);
     QString decodeText(const QString &input, const QString &method);
     void updateRecentFilesMenu();
