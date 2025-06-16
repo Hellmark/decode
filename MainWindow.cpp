@@ -402,19 +402,32 @@ void MainWindow::loadFile(const QString &filePath) {
     saveRecentFiles();
 }
 
-void MainWindow::saveFileAs() {
-    int index = tabWidget->currentIndex();
-    if (!tabDataMap.contains(index)) return;
-    QString path = QFileDialog::getSaveFileName(this, "Save File As");
-    if (path.isEmpty()) return;
-    QFile testFile(path);
-    if (!testFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        QMessageBox::warning(this, "Save Failed", "Cannot write to file: " + path);
+void MainWindow::saveFileAs(QTextEdit *editor) {
+    if (!editor || !tabDataMap.contains(editor)) return;
+
+    QString filePath = QFileDialog::getSaveFileName(this, "Save File As");
+    if (filePath.isEmpty()) return;
+
+    QFile file(filePath);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QMessageBox::warning(this, "Error", "Could not write to file.");
         return;
     }
-    testFile.close();
-    tabDataMap[index].filePath = path;
-    saveFile(index);
+
+    QTextStream out(&file);
+    out << editor->toPlainText();
+    file.close();
+
+    tabDataMap[editor].filePath = filePath;
+    tabDataMap[editor].isModified = false;
+
+    int index = indexForEditor(editor);
+    if (index >= 0) {
+        QFileInfo info(filePath);
+        tabWidget->setTabText(index, info.fileName());
+    }
+
+    markModified(editor, false);
 }
 
 void MainWindow::saveFile(QTextEdit *editor) {
@@ -610,26 +623,6 @@ void MainWindow::maybeSaveAndClose(QTextEdit *editor) {
     }
     tabDataMap.remove(editor);
     editor->deleteLater();
-}
-
-void MainWindow::maybeSaveAndClose(int index) {
-    if (!tabDataMap.contains(index)) return;
-    if (tabDataMap[index].isModified) {
-        auto response = QMessageBox::question(this, "Unsaved Changes",
-                                              "Do you want to save changes before closing?");
-        if (response == QMessageBox::Yes) {
-            saveFile(index);
-        } else if (response == QMessageBox::Cancel) {
-            return;
-        }
-    }
-    tabDataMap.remove(index);
-    tabWidget->removeTab(index);
-    QMap<int, TabData> newMap;
-    for (int i = 0; i < tabWidget->count(); ++i) {
-        newMap[i] = tabDataMap.value(i >= index ? i + 1 : i);
-    }
-    tabDataMap = newMap;
 }
 
 void MainWindow::closeTab(QTextEdit *editor) {
