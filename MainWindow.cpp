@@ -49,7 +49,7 @@ void MainWindow::setupUI() {
     tabWidget = new QTabWidget(this);
     tabWidget->setTabsClosable(true);
     setCentralWidget(tabWidget);
-    
+
     connect(tabWidget, &QTabWidget::tabCloseRequested, this, [this](int index) {
         QTextEdit *editor = qobject_cast<QTextEdit*>(tabWidget->widget(index));
         closeTab(editor);
@@ -417,20 +417,28 @@ void MainWindow::saveFileAs() {
     saveFile(index);
 }
 
-void MainWindow::saveFile(int index) {
-    if (!tabDataMap.contains(index)) return;
-    QString path = tabDataMap[index].filePath;
+void MainWindow::saveFile(QTextEdit *editor) {
+    if (!editor || !tabDataMap.contains(editor)) return;
+    TabData &data = tabDataMap[editor];
+    QString path = data.filePath;
+
     if (path.isEmpty()) {
-        saveFileAs();
+        saveFileAs(editor);
         return;
     }
+
     QFile file(path);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) return;
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QMessageBox::warning(this, "Error", "Could not write to file.");
+        return;
+    }
+
     QTextStream out(&file);
-    out << tabDataMap[index].editor->toPlainText();
+    out << editor->toPlainText();
     file.close();
-    markModified(index, false);
-    tabWidget->setTabText(index, QFileInfo(path).fileName());
+
+    data.isModified = false;
+    markModified(editor, false);
 }
 
 void MainWindow::saveAll() {
@@ -580,6 +588,28 @@ void MainWindow::restoreSession() {
     if (tabWidget->count() == 0) {
         newTab();
     }
+}
+
+void MainWindow::maybeSaveAndClose(QTextEdit *editor) {
+    if (!editor || !tabDataMap.contains(editor)) return;
+
+    TabData data = tabDataMap.value(editor);
+    if (data.isModified) {
+        auto response = QMessageBox::question(this, "Unsaved Changes",
+                                              "Do you want to save changes before closing?");
+        if (response == QMessageBox::Yes) {
+            saveFile(editor);
+        } else if (response == QMessageBox::Cancel) {
+            return;
+        }
+    }
+
+    int index = indexForEditor(editor);
+    if (index != -1) {
+        tabWidget->removeTab(index);
+    }
+    tabDataMap.remove(editor);
+    editor->deleteLater();
 }
 
 void MainWindow::maybeSaveAndClose(int index) {
