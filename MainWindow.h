@@ -106,6 +106,8 @@ private:
     void updateCursorStatus();
     void closeEvent(QCloseEvent *event) override;
     void applyEditorSettings();
+    void clearSession();
+    void showAboutDialog();
 
 
     private slots:

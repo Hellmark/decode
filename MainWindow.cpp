@@ -228,6 +228,14 @@ void MainWindow::setupUI() {
         });
         decodeMenu->addAction(decodeAction);
     }
+
+    QMenu *helpMenu = menuBar()->addMenu("Help");
+    QAction *aboutAction = new QAction(QIcon::fromTheme("help-about"), "About", this);
+    helpMenu->addAction(aboutAction);
+    connect(aboutAction, &QAction::triggered, this, &MainWindow::showAboutDialog);
+    aboutAction->setShortcut(QKeySequence::HelpContents);
+
+
     applyEditorSettings();
 }
 
@@ -457,9 +465,7 @@ void MainWindow::saveSession() {
     settings.setValue("windowState", saveState());
 
     settings.setValue("count", tabWidget->count());
-    for (int i = 0; i < tabWidget->count(); ++i) {
-        settings.setValue(QString("file_%1").arg(i), tabDataMap[i].filePath);
-    }
+
     if (settings.value("window/maximized", false).toBool()) {
         showMaximized();
     } else {
@@ -472,6 +478,24 @@ void MainWindow::saveSession() {
     settings.setValue("ui/statusBarVisible", statusBar()->isVisible());
     settings.setValue("restorePreviousSession", restorePreviousSession);
 
+    settings.beginGroup("session");
+    QStringList paths;
+    QStringList contents;
+
+    for (const auto &tab : tabDataMap) {
+        if (tab.filePath.isEmpty()) {
+            // Unsaved file: store content directly
+            paths << "";
+            contents << tab.editor->toPlainText();
+        } else {
+            // Saved file: store path, and empty content (reloaded from file)
+            paths << tab.filePath;
+            contents << "";
+        }
+    }
+    settings.setValue("filePaths", paths);
+    settings.setValue("unsavedContents", contents);
+    settings.endGroup();
 }
 
 void MainWindow::restoreSession() {
@@ -481,10 +505,33 @@ void MainWindow::restoreSession() {
     //Checks if session restoration is wanted, and loads the files if so
     restorePreviousSession = settings.value("restorePreviousSession", true).toBool();
     if (restorePreviousSession) {
-        for (int i = 0; i < count; ++i) {
-            QString file = settings.value(QString("file_%1").arg(i)).toString();
-            if (!file.isEmpty()) loadFile(file);
+        settings.beginGroup("session");
+        QStringList paths = settings.value("filePaths").toStringList();
+        QStringList contents = settings.value("unsavedContents").toStringList();
+
+        for (int i = 0; i < paths.size(); ++i) {
+            if (paths[i].isEmpty()) {
+                // Create new tab with content
+                int index = tabWidget->addTab(new QTextEdit, "Untitled");
+                tabWidget->setCurrentIndex(index);
+                QTextEdit *editor = qobject_cast<QTextEdit*>(tabWidget->widget(index));
+                editor->setPlainText(contents[i]);
+                editor->setFont(currentFont);
+                editor->setTabStopDistance(currentTabSize * QFontMetrics(currentFont).horizontalAdvance(' '));
+
+                TabData tabData;
+                tabData.editor = editor;
+                tabData.filePath.clear();
+                tabDataMap[index] = tabData;
+
+                QString tabTitle = "Untitled*";
+                tabWidget->setTabText(index, tabTitle);
+            } else {
+                // load from disk
+                loadFile(paths[i]);
+            }
         }
+        settings.endGroup();
     }
 
     // Saving Window position info, with logic to make sure that things don't get messed up if maximized.
@@ -647,4 +694,18 @@ QFont MainWindow::getFont() const {
 void MainWindow::setFont(const QFont &font) {
     currentFont = font;
     applyEditorSettings();
+}
+
+void MainWindow::clearSession() {
+    QSettings settings("Hellmark Programming Group", "Decode");
+    settings.beginGroup("session");
+    settings.remove("");  // Remove everything
+    settings.endGroup();
+}
+
+void MainWindow::showAboutDialog() {
+    QMessageBox::about(this, "About Decode",
+        "Decode v3.0\n"
+        "© 2025 Hellmark Programming Group\n\n"
+        "A simple cipher utility that helps make things more secure!");
 }
