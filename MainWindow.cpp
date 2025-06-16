@@ -483,13 +483,13 @@ void MainWindow::saveSession() {
     QStringList contents;
 
     for (const auto &tab : tabDataMap) {
-        if (tab.filePath.isEmpty()) {
-            // Unsaved file: store content directly
-            paths << "";
+        // Add file path, even if empty (new tab)
+        paths << tab.filePath;
+        if (tab.isModified) {
+            // Save unsaved data
             contents << tab.editor->toPlainText();
         } else {
-            // Saved file: store path, and empty content (reloaded from file)
-            paths << tab.filePath;
+            // Indicates to load from disk
             contents << "";
         }
     }
@@ -502,7 +502,7 @@ void MainWindow::restoreSession() {
     QSettings settings("Hellmark Programming Group", "Decode");
     int count = settings.value("count").toInt();
 
-    //Checks if session restoration is wanted, and loads the files if so
+    // Checks if session restoration is wanted, and loads the files if so
     restorePreviousSession = settings.value("restorePreviousSession", true).toBool();
     if (restorePreviousSession) {
         settings.beginGroup("session");
@@ -510,25 +510,34 @@ void MainWindow::restoreSession() {
         QStringList contents = settings.value("unsavedContents").toStringList();
 
         for (int i = 0; i < paths.size(); ++i) {
-            if (paths[i].isEmpty()) {
+            const QString &path = paths[i];
+            const QString &content = contents[i];
+            if (paths.size() != contents.size()) {
+                qWarning("Session restore data is inconsistent. Skipping session restore.");
+                return;
+            }
+            if (paths.isEmpty()) {
                 // Create new tab with content
                 int index = tabWidget->addTab(new QTextEdit, "Untitled");
-                tabWidget->setCurrentIndex(index);
                 QTextEdit *editor = qobject_cast<QTextEdit*>(tabWidget->widget(index));
-                editor->setPlainText(contents[i]);
+                editor->setPlainText(content);
                 editor->setFont(currentFont);
                 editor->setTabStopDistance(currentTabSize * QFontMetrics(currentFont).horizontalAdvance(' '));
 
                 TabData tabData;
                 tabData.editor = editor;
                 tabData.filePath.clear();
+                tabData.isModified = true;
                 tabDataMap[index] = tabData;
-
-                QString tabTitle = "Untitled*";
-                tabWidget->setTabText(index, tabTitle);
+                tabWidget->setTabText(index, "Untitled*");
             } else {
                 // load from disk
-                loadFile(paths[i]);
+                loadFile(path);
+                if (!content.isEmpty()) {
+                    int index = tabWidget->currentIndex();  // latest tab added
+                    tabDataMap[index].editor->setPlainText(content);
+                    markModified(index, true);
+                }
             }
         }
         settings.endGroup();
