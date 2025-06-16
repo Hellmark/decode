@@ -516,7 +516,7 @@ void MainWindow::restoreSession() {
                 qWarning("Session restore data is inconsistent. Skipping session restore.");
                 return;
             }
-            if (paths.isEmpty()) {
+            if (path.isEmpty()) {
                 // Create new tab with content
                 int index = tabWidget->addTab(new QTextEdit, "Untitled");
                 QTextEdit *editor = qobject_cast<QTextEdit*>(tabWidget->widget(index));
