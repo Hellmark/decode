@@ -68,8 +68,9 @@ void MainWindow::setupUI() {
 
     QAction *saveAction = new QAction(QIcon::fromTheme("document-save"), "Save", this);
     connect(saveAction, &QAction::triggered, [this]() {
-        int index = tabWidget->currentIndex();
-        saveFile(index);
+        if (QTextEdit *editor = qobject_cast<QTextEdit *>(tabWidget->currentWidget())) {
+            saveFile(editor);
+        }
     });
     saveAction->setShortcut(QKeySequence::Save);
 
@@ -252,21 +253,20 @@ void MainWindow::updateCursorStatus() {
     cursorLabel->setText(QString("Ln %1, Col %2").arg(line).arg(col));
 }
 
-int MainWindow::newTab() {
+void MainWindow::newTab() {
     QTextEdit *editor = new QTextEdit(this);
-    int index = tabWidget->addTab(editor, "Untitled");
-    tabWidget->setCurrentIndex(index);
+    tabWidget->addTab(editor, "Untitled");
+    tabWidget->setCurrentWidget(editor);
 
     TabData data;
     data.editor = editor;
     data.isModified = false;
-    tabDataMap[index] = data;
+    tabDataMap[editor] = data;
+
     connect(editor, &QTextEdit::cursorPositionChanged, this, &MainWindow::updateCursorStatus);
     connect(editor, &QTextEdit::textChanged, this, [this, editor]() {
         markModified(editor, true);
     });
-
-    return index;
 }
 
 void MainWindow::markModified(int index, bool modified) {
@@ -598,8 +598,12 @@ void MainWindow::maybeSaveAndClose(int index) {
     tabDataMap = newMap;
 }
 
-void MainWindow::closeTab(int index) {
-    maybeSaveAndClose(index);
+void MainWindow::closeTab(QTextEdit *editor) {
+    // Kick back if no pointer is passed in
+    if (!editor) return;
+    // Trigger the function for closing and check with user if should save
+    maybeSaveAndClose(editor);
+    //open a new tab if no other tabs exist
     if (tabWidget->count() == 0) {
         newTab();
     }
