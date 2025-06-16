@@ -17,6 +17,10 @@
 #include <QSettings>
 #include <QCloseEvent>
 
+QT_BEGIN_NAMESPACE
+namespace Ui { class MainWindow; }
+QT_END_NAMESPACE
+
 class MainWindow : public QMainWindow {
     Q_OBJECT
 
@@ -109,7 +113,6 @@ private:
     void applyEditorSettings();
     void clearSession();
     void showAboutDialog();
-
 
     private slots:
         void openSettingsDialog();
