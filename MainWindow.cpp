@@ -51,6 +51,7 @@ void MainWindow::setupUI() {
     setCentralWidget(tabWidget);
 
     connect(tabWidget, &QTabWidget::tabCloseRequested, this, [this](int index) {
+        QTextEdit *editor = qobject_cast<QTextEdit *>(tabWidget->widget(index));
         QTextEdit *editor = qobject_cast<QTextEdit*>(tabWidget->widget(index));
         closeTab(editor);
     });
@@ -93,7 +94,7 @@ void MainWindow::setupUI() {
     connect(copyAction, &QAction::triggered, [this]() {
         int index = tabWidget->currentIndex();
         if (tabDataMap.contains(index)) {
-            QGuiApplication::clipboard()->setText(tabDataMap[index].editor->textCursor().selectedText());
+            QGuiApplication::clipboard()->setText(tabDataMap[editor].editor->textCursor().selectedText());
         }
     });
     copyAction->setShortcut(QKeySequence::Copy);
@@ -102,7 +103,7 @@ void MainWindow::setupUI() {
     connect(cutAction, &QAction::triggered, [this]() {
         int index = tabWidget->currentIndex();
         if (tabDataMap.contains(index)) {
-            QTextCursor cursor = tabDataMap[index].editor->textCursor();
+            QTextCursor cursor = tabDataMap[editor].editor->textCursor();
             QGuiApplication::clipboard()->setText(cursor.selectedText());
             cursor.removeSelectedText();
         }
@@ -113,7 +114,7 @@ void MainWindow::setupUI() {
     connect(pasteAction, &QAction::triggered, [this]() {
         int index = tabWidget->currentIndex();
         if (tabDataMap.contains(index)) {
-            tabDataMap[index].editor->insertPlainText(QGuiApplication::clipboard()->text());
+            tabDataMap[editor].editor->insertPlainText(QGuiApplication::clipboard()->text());
         }
     });
     pasteAction->setShortcut(QKeySequence::Paste);
@@ -251,7 +252,7 @@ void MainWindow::connectSignals() {
 void MainWindow::updateCursorStatus() {
     int index = tabWidget->currentIndex();
     if (index < 0 || !tabDataMap.contains(index)) return;
-    QTextCursor cursor = tabDataMap[index].editor->textCursor();
+    QTextCursor cursor = tabDataMap[editor].editor->textCursor();
     int line = cursor.blockNumber() + 1;
     int col = cursor.columnNumber() + 1;
     cursorLabel->setText(QString("Ln %1, Col %2").arg(line).arg(col));
@@ -275,7 +276,7 @@ void MainWindow::newTab() {
 
 void MainWindow::markModified(int index, bool modified) {
     if (!tabDataMap.contains(index)) return;
-    tabDataMap[index].isModified = modified;
+    tabDataMap[editor].isModified = modified;
     QString title = tabWidget->tabText(index);
     if (modified && !title.endsWith("*")) {
         tabWidget->setTabText(index, title + "*");
@@ -293,10 +294,10 @@ void MainWindow::markModified(QTextEdit *editor, bool modified) {
     }
 }
 
-void MainWindow::encodeCurrentText(const QString &encoderName) {
-    int index = tabWidget->currentIndex();
-    if (!tabDataMap.contains(index)) return;
-    QTextEdit *editor = tabDataMap[index].editor;
+void MainWindow::encodeCurrentText(const QString &method) {
+    QTextEdit *editor = qobject_cast<QTextEdit *>(tabWidget->currentWidget());
+    if (!editor) return;
+
     QString text = editor->toPlainText();
     QString result;
 
@@ -324,17 +325,20 @@ void MainWindow::encodeCurrentText(const QString &encoderName) {
         QString key = QInputDialog::getText(this, "AES Key", "Enter encryption key:", QLineEdit::Password, "", &ok);
         if (!ok || key.isEmpty()) return;
         result = AESCodec::encode(text, key);
+    } else {
+        QMessageBox::warning(this, "Unknown Codec", "The selected decoding method is not supported.");
+        return;
     }
 
     editor->setPlainText(result);
-    markModified(index, true);
+    markModified(editor, true);
 }
 
-void MainWindow::decodeCurrentText(const QString &decoderName) {
-    int index = tabWidget->currentIndex();
-    if (!tabDataMap.contains(index)) return;
+void MainWindow::decodeCurrentText(const QString &method) {
+    QTextEdit *editor = qobject_cast<QTextEdit *>(tabWidget->currentWidget());
+    if (!editor) return;
 
-    QString text = tabDataMap[index].editor->toPlainText();
+    QString text = editor->toPlainText();
     QString result;
 
     if (decoderName == "Base64") {
@@ -361,14 +365,14 @@ void MainWindow::decodeCurrentText(const QString &decoderName) {
         QString key = QInputDialog::getText(this, "AES Key", "Enter decryption key:", QLineEdit::Password, "", &ok);
         if (!ok || key.isEmpty()) return;
         result = AESCodec::decode(text, key);
+    } else {
+        QMessageBox::warning(this, "Unknown Codec", "The selected decoding method is not supported.");
+        return;
     }
 
-    if (!result.isEmpty()) {
-        tabDataMap[index].editor->setPlainText(result);
-        markModified(index, true);
-    }
+    editor->setPlainText(result);
+    markModified(editor, true);
 }
-
 
 void MainWindow::openFile() {
     QString filePath = QFileDialog::getOpenFileName(this, "Open File");
@@ -389,12 +393,12 @@ void MainWindow::loadFile(const QString &filePath) {
     QString content = QTextStream(&file).readAll();
     newTab();
     int index = tabWidget->currentIndex();
-    tabDataMap[index].editor->blockSignals(true);
-    tabDataMap[index].editor->setPlainText(content);
-    tabDataMap[index].editor->blockSignals(false);
+    tabDataMap[editor].editor->blockSignals(true);
+    tabDataMap[editor].editor->setPlainText(content);
+    tabDataMap[editor].editor->blockSignals(false);
     tabWidget->setTabText(index, QFileInfo(filePath).fileName());
-    tabDataMap[index].filePath = filePath;
-    markModified(index, false);
+    tabDataMap[editor].filePath = filePath;
+    markModified(tabData.editor, false);
     recentFiles.removeAll(filePath);
     recentFiles.prepend(filePath);
     if (recentFiles.size() > 10) recentFiles.removeLast();
@@ -558,17 +562,17 @@ void MainWindow::restoreSession() {
                 // Create new tab with content
                 if (!content.isEmpty()) {
                     int index = newTab();
-                    tabDataMap[index].editor->setPlainText(content);
-                    markModified(index, true);
+                    tabDataMap[editor].editor->setPlainText(content);
+                    markModified(tabData.editor, true);
                     tabWidget->setTabText(index, "Untitled*");
                 }
             } else {
                 // load from disk
                 if (!content.isEmpty()) {
                     int index = newTab();
-                    tabDataMap[index].filePath = path;
-                    tabDataMap[index].editor->setPlainText(content);
-                    markModified(index, true);
+                    tabDataMap[editor].filePath = path;
+                    tabDataMap[editor].editor->setPlainText(content);
+                    markModified(tabData.editor, true);
                     tabWidget->setTabText(index, QFileInfo(path).fileName() + "*");
                 } else {
                     loadFile(path);
@@ -639,16 +643,41 @@ void MainWindow::closeTab(QTextEdit *editor) {
 }
 
 void MainWindow::undoLastChange() {
-    int index = tabWidget->currentIndex();
-    if (tabDataMap.contains(index)) {
-        tabDataMap[index].editor->undo();
+    QTextEdit *editor = qobject_cast<QTextEdit *>(tabWidget->currentWidget());
+    if (!editor || !tabDataMap.contains(editor))
+        return;
+
+    auto &data = tabDataMap[editor];
+    if (!data.undoStack.isEmpty()) {
+        data.redoStack.push(editor->toPlainText());
+        QString last = data.undoStack.pop();
+        editor->blockSignals(true);
+        editor->setPlainText(last);
+        editor->blockSignals(false);
+        markModified(editor, true);
+    }
+}
+
+void MainWindow::redoLastChange() {
+    QTextEdit *editor = qobject_cast<QTextEdit *>(tabWidget->currentWidget());
+    if (!editor || !tabDataMap.contains(editor))
+        return;
+
+    auto &data = tabDataMap[editor];
+    if (!data.redoStack.isEmpty()) {
+        data.undoStack.push(editor->toPlainText());
+        QString next = data.redoStack.pop();
+        editor->blockSignals(true);
+        editor->setPlainText(next);
+        editor->blockSignals(false);
+        markModified(editor, true);
     }
 }
 
 void MainWindow::redoLastChange() {
     int index = tabWidget->currentIndex();
     if (tabDataMap.contains(index)) {
-        tabDataMap[index].editor->redo();
+        tabDataMap[editor].editor->redo();
     }
 }
 

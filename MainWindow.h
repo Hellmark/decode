@@ -96,11 +96,10 @@ private:
         QStack<QString> redoStack;
     };
 
-    QMap<int, TabData> tabDataMap;
+    QMap<QTextEdit*, TabData> tabDataMap;
 
     void setupUI();
     void connectSignals();
-    void markModified(int index, bool modified);
     void markModified(QTextEdit *editor, bool modified);
     QString encodeText(const QString &input, const QString &method);
     QString decodeText(const QString &input, const QString &method);
