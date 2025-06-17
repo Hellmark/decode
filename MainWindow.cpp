@@ -51,7 +51,6 @@ void MainWindow::setupUI() {
     setCentralWidget(tabWidget);
 
     connect(tabWidget, &QTabWidget::tabCloseRequested, this, [this](int index) {
-        QTextEdit *editor = qobject_cast<QTextEdit *>(tabWidget->widget(index));
         QTextEdit *editor = qobject_cast<QTextEdit*>(tabWidget->widget(index));
         closeTab(editor);
     });
@@ -301,26 +300,26 @@ void MainWindow::encodeCurrentText(const QString &method) {
     QString text = editor->toPlainText();
     QString result;
 
-    if (encoderName == "Base64") {
+    if (method == "Base64") {
         result = Base64Codec::transform(text, false);
-    } else if (encoderName == "ROT13") {
+    } else if (method == "ROT13") {
         result = Rot13::transform(text);
-    } else if (encoderName == "Caesar") {
+    } else if (method == "Caesar") {
         bool ok;
         int shift = QInputDialog::getInt(this, "Caesar Shift", "Shift: ", 3, -25, 25, 1, &ok);
         if (ok) result = CaesarCipher::transform(text, shift, false);
         else return;
-    } else if (encoderName == "Binary") {
+    } else if (method == "Binary") {
         result = BinaryCodec::transform(text, false);
-    } else if (encoderName == "Hex") {
+    } else if (method == "Hex") {
         result = HexCodec::transform(text, false);
-    } else if (encoderName == "PigLatin") {
+    } else if (method == "PigLatin") {
         result = PigLatin::transform(text, false);
-    } else if (encoderName == "Atbash") {
+    } else if (method == "Atbash") {
         result = Atbash::transform(text);
-    } else if (encoderName == "Morse") {
+    } else if (method == "Morse") {
         result = MorseCodec::transform(text, false);
-    } else if (encoderName == "AES") {
+    } else if (method == "AES") {
         bool ok;
         QString key = QInputDialog::getText(this, "AES Key", "Enter encryption key:", QLineEdit::Password, "", &ok);
         if (!ok || key.isEmpty()) return;
@@ -341,26 +340,26 @@ void MainWindow::decodeCurrentText(const QString &method) {
     QString text = editor->toPlainText();
     QString result;
 
-    if (decoderName == "Base64") {
+    if (method == "Base64") {
         result = Base64Codec::transform(text, true);
-    } else if (decoderName == "ROT13") {
+    } else if (method == "ROT13") {
         result = Rot13::transform(text);
-    } else if (decoderName == "Caesar") {
+    } else if (method == "Caesar") {
         bool ok;
         int shift = QInputDialog::getInt(this, "Caesar Shift", "Shift: ", 3, -25, 25, 1, &ok);
         if (ok) result = CaesarCipher::transform(text, shift, true);
         else return;
-    } else if (decoderName == "Binary") {
+    } else if (method == "Binary") {
         result = BinaryCodec::transform(text, true);
-    } else if (decoderName == "Hex") {
+    } else if (method == "Hex") {
         result = HexCodec::transform(text, true);
-    } else if (decoderName == "PigLatin") {
+    } else if (method == "PigLatin") {
         result = PigLatin::transform(text, true);
-    } else if (decoderName == "Atbash") {
+    } else if (method == "Atbash") {
         result = Atbash::transform(text);
-    } else if (decoderName == "Morse") {
+    } else if (method == "Morse") {
         result = MorseCodec::transform(text, true);
-    } else if (decoderName == "AES") {
+    } else if (method == "AES") {
         bool ok;
         QString key = QInputDialog::getText(this, "AES Key", "Enter decryption key:", QLineEdit::Password, "", &ok);
         if (!ok || key.isEmpty()) return;
@@ -459,9 +458,15 @@ void MainWindow::saveFile(QTextEdit *editor) {
 }
 
 void MainWindow::saveAll() {
-    for (int i = 0; i < tabWidget->count(); ++i) {
-        if (tabDataMap.contains(i) && tabDataMap[i].isModified) {
-            saveFile(i);
+    for (auto it = tabDataMap.begin(); it != tabDataMap.end(); ++it) {
+        QTextEdit *editor = it.key();
+        TabData &data = it.value();
+
+        if (!data.filePath.isEmpty()) {
+            saveFile(editor);  // Saves to existing file path
+        } else {
+            tabWidget->setCurrentWidget(editor);  // Brings the tab to front
+            saveFileAs(editor);                   // Prompt for location
         }
     }
 }
@@ -602,8 +607,8 @@ void MainWindow::restoreSession() {
     statusBar()->setVisible(settings.value("ui/statusBarVisible", true).toBool());
 
     // remembers the position of the toolbars
-    restoreGeometry(settings.value("geometry").toByteArray());
-    restoreState(settings.value("windowState").toByteArray());
+    restoreGeometry(settings.value("window/geometry").toByteArray());
+    restoreState(settings.value("window/windowState").toByteArray());
 
     // make sure that there is at least one tab
     if (tabWidget->count() == 0) {
@@ -632,7 +637,7 @@ void MainWindow::maybeSaveAndClose(QTextEdit *editor) {
     editor->deleteLater();
 
     if (tabWidget->count() == 0)
-        newFile();
+        newTab();
 }
 
 void MainWindow::closeTab(QTextEdit *editor) {
@@ -675,13 +680,6 @@ void MainWindow::redoLastChange() {
         editor->setPlainText(next);
         editor->blockSignals(false);
         markModified(editor, true);
-    }
-}
-
-void MainWindow::redoLastChange() {
-    int index = tabWidget->currentIndex();
-    if (tabDataMap.contains(index)) {
-        tabDataMap[editor].editor->redo();
     }
 }
 
