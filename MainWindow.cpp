@@ -82,6 +82,10 @@ void MainWindow::setupUI() {
     connect(saveAllAction, &QAction::triggered, this, &MainWindow::saveAll);
     saveAllAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_S));
 
+    //QAction *closeAction = new QAction(QIcon::fromTheme("window-close"), "Close Document", this);
+    //connect(closeAction, &QAction::triggered, this, &MainWindow::closeTab);
+    //saveAllAction->setShortcut(QKeySequence(QKeySequence::Close));
+
     QAction *undoAction = new QAction(QIcon::fromTheme("edit-undo"), "Undo", this);
     connect(undoAction, &QAction::triggered, this, &MainWindow::undoLastChange);
     undoAction->setShortcut(QKeySequence::Undo);
@@ -251,10 +255,12 @@ void MainWindow::connectSignals() {
 void MainWindow::updateCursorStatus() {
     QTextEdit *editor = qobject_cast<QTextEdit *>(tabWidget->currentWidget());
     if (!editor || !tabDataMap.contains(editor)) return;
+    editor->blockSignals(true);
     QTextCursor cursor = editor->textCursor();
     int line = cursor.blockNumber() + 1;
     int col = cursor.columnNumber() + 1;
     cursorLabel->setText(QString("Ln %1, Col %2").arg(line).arg(col));
+    editor->blockSignals(false);
 }
 
 void MainWindow::newTab() {
@@ -274,13 +280,39 @@ void MainWindow::newTab() {
 }
 
 void MainWindow::markModified(QTextEdit *editor, bool modified) {
-    for (auto it = tabDataMap.begin(); it != tabDataMap.end(); ++it) {
-        if (it->editor == editor) {
-            markModified(it.key(), modified);
-            break;
-        }
+    if (!editor || !tabDataMap.contains(editor)) return;
+    TabData &data = tabDataMap[editor];
+
+    // Only act if modified state is changing
+    if (data.isModified == modified)
+        return;
+
+    data.isModified = modified;
+
+    int index = tabWidget->indexOf(editor);
+    if (index == -1) return;
+
+    QString title;
+    if (!data.filePath.isEmpty()) {
+        title = QFileInfo(data.filePath).fileName();
+    } else {
+        title = "Untitled";
+    }
+
+    // Remove '*' if already present
+    if (title.endsWith('*'))
+        title.chop(1);
+
+    // Add '*' only if modified
+    if (modified)
+        title += '*';
+
+    // Only set the text if it's different
+    if (tabWidget->tabText(index) != title) {
+        tabWidget->setTabText(index, title);
     }
 }
+
 
 void MainWindow::encodeCurrentText(const QString &method) {
     QTextEdit *editor = qobject_cast<QTextEdit *>(tabWidget->currentWidget());
@@ -380,7 +412,9 @@ void MainWindow::loadFile(const QString &filePath) {
     file.close();
 
     QTextEdit *editor = new QTextEdit(this);
+    editor->blockSignals(true);
     editor->setPlainText(content);
+    editor->blockSignals(false);
 
     int index = tabWidget->addTab(editor, QFileInfo(filePath).fileName());
     tabWidget->setCurrentIndex(index);
