@@ -30,9 +30,7 @@ public:
 public slots:
     void newTab();
     void closeTab(QTextEdit *editor);
-    void saveFile();
     void saveFile(QTextEdit *editor);
-    void saveFileAs();
     void saveFileAs(QTextEdit *editor);
     void openFile();
     void openRecentFile();
@@ -85,6 +83,8 @@ private:
     QFont currentFont;
     int currentTabSize;
     bool restorePreviousSession;
+
+    int indexForEditor(QTextEdit *editor) const;
 
     QSettings settings;
 

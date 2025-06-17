@@ -91,29 +91,30 @@ void MainWindow::setupUI() {
 
     QAction *copyAction = new QAction(QIcon::fromTheme("edit-copy"), "Copy", this);
     connect(copyAction, &QAction::triggered, [this]() {
-        int index = tabWidget->currentIndex();
-        if (tabDataMap.contains(index)) {
-            QGuiApplication::clipboard()->setText(tabDataMap[editor].editor->textCursor().selectedText());
+        QTextEdit *editor = qobject_cast<QTextEdit*>(tabWidget->currentWidget());
+        if (editor && tabDataMap.contains(editor)) {
+            QGuiApplication::clipboard()->setText(editor->textCursor().selectedText());
         }
     });
     copyAction->setShortcut(QKeySequence::Copy);
 
     QAction *cutAction = new QAction(QIcon::fromTheme("edit-cut"), "Cut", this);
     connect(cutAction, &QAction::triggered, [this]() {
-        int index = tabWidget->currentIndex();
-        if (tabDataMap.contains(index)) {
-            QTextCursor cursor = tabDataMap[editor].editor->textCursor();
+        QTextEdit *editor = qobject_cast<QTextEdit*>(tabWidget->currentWidget());
+        if (editor && tabDataMap.contains(editor)) {
+            QTextCursor cursor = editor->textCursor();
             QGuiApplication::clipboard()->setText(cursor.selectedText());
             cursor.removeSelectedText();
+            editor->setTextCursor(cursor);
         }
     });
     cutAction->setShortcut(QKeySequence::Cut);
 
     QAction *pasteAction = new QAction(QIcon::fromTheme("edit-paste"), "Paste", this);
     connect(pasteAction, &QAction::triggered, [this]() {
-        int index = tabWidget->currentIndex();
-        if (tabDataMap.contains(index)) {
-            tabDataMap[editor].editor->insertPlainText(QGuiApplication::clipboard()->text());
+        QTextEdit *editor = qobject_cast<QTextEdit*>(tabWidget->currentWidget());
+        if (editor && tabDataMap.contains(editor)) {
+            editor->insertPlainText(QGuiApplication::clipboard()->text());
         }
     });
     pasteAction->setShortcut(QKeySequence::Paste);
@@ -217,8 +218,8 @@ void MainWindow::setupUI() {
 
         QAction *encodeAction = new QAction(name, this);
         connect(encodeAction, &QAction::triggered, this, [this, name]() {
-            int index = tabWidget->currentIndex();
-            if (index >= 0 && tabDataMap.contains(index)) {
+            QTextEdit *editor = qobject_cast<QTextEdit *>(tabWidget->currentWidget());
+            if (editor && tabDataMap.contains(editor)) {
                 encodeCurrentText(name);
             }
         });
@@ -226,8 +227,8 @@ void MainWindow::setupUI() {
 
         QAction *decodeAction = new QAction(name, this);
         connect(decodeAction, &QAction::triggered, this, [this, name]() {
-            int index = tabWidget->currentIndex();
-            if (index >= 0 && tabDataMap.contains(index)) {
+            QTextEdit *editor = qobject_cast<QTextEdit *>(tabWidget->currentWidget());
+            if (editor && tabDataMap.contains(editor)) {
                 decodeCurrentText(name);
             }
         });
@@ -240,7 +241,6 @@ void MainWindow::setupUI() {
     connect(aboutAction, &QAction::triggered, this, &MainWindow::showAboutDialog);
     aboutAction->setShortcut(QKeySequence::HelpContents);
 
-
     applyEditorSettings();
 }
 
@@ -249,9 +249,9 @@ void MainWindow::connectSignals() {
 }
 
 void MainWindow::updateCursorStatus() {
-    int index = tabWidget->currentIndex();
-    if (index < 0 || !tabDataMap.contains(index)) return;
-    QTextCursor cursor = tabDataMap[editor].editor->textCursor();
+    QTextEdit *editor = qobject_cast<QTextEdit *>(tabWidget->currentWidget());
+    if (!editor || !tabDataMap.contains(editor)) return;
+    QTextCursor cursor = editor->textCursor();
     int line = cursor.blockNumber() + 1;
     int col = cursor.columnNumber() + 1;
     cursorLabel->setText(QString("Ln %1, Col %2").arg(line).arg(col));
@@ -271,17 +271,6 @@ void MainWindow::newTab() {
     connect(editor, &QTextEdit::textChanged, this, [this, editor]() {
         markModified(editor, true);
     });
-}
-
-void MainWindow::markModified(int index, bool modified) {
-    if (!tabDataMap.contains(index)) return;
-    tabDataMap[editor].isModified = modified;
-    QString title = tabWidget->tabText(index);
-    if (modified && !title.endsWith("*")) {
-        tabWidget->setTabText(index, title + "*");
-    } else if (!modified && title.endsWith("*")) {
-        tabWidget->setTabText(index, title.left(title.length() - 1));
-    }
 }
 
 void MainWindow::markModified(QTextEdit *editor, bool modified) {
@@ -383,26 +372,47 @@ void MainWindow::openFile() {
 void MainWindow::loadFile(const QString &filePath) {
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        QMessageBox::warning(this, "Open Failed", "Could not open file: " + filePath);
-        recentFiles.removeAll(filePath);
-        updateRecentFilesMenu();
-        saveRecentFiles();
+        QMessageBox::warning(this, "Error", "Could not open file");
         return;
     }
+
     QString content = QTextStream(&file).readAll();
-    newTab();
-    int index = tabWidget->currentIndex();
-    tabDataMap[editor].editor->blockSignals(true);
-    tabDataMap[editor].editor->setPlainText(content);
-    tabDataMap[editor].editor->blockSignals(false);
-    tabWidget->setTabText(index, QFileInfo(filePath).fileName());
-    tabDataMap[editor].filePath = filePath;
-    markModified(tabData.editor, false);
-    recentFiles.removeAll(filePath);
-    recentFiles.prepend(filePath);
-    if (recentFiles.size() > 10) recentFiles.removeLast();
-    updateRecentFilesMenu();
-    saveRecentFiles();
+    file.close();
+
+    QTextEdit *editor = new QTextEdit(this);
+    editor->setPlainText(content);
+
+    int index = tabWidget->addTab(editor, QFileInfo(filePath).fileName());
+    tabWidget->setCurrentIndex(index);
+
+    TabData data;
+    data.editor = editor;
+    data.filePath = filePath;
+    data.isModified = false;
+    tabDataMap[editor] = data;
+
+    connect(editor, &QTextEdit::cursorPositionChanged, this, &MainWindow::updateCursorStatus);
+    connect(editor, &QTextEdit::textChanged, this, [this, editor]() {
+        markModified(editor, true);
+    });
+
+    // Apply font and tab settings
+    editor->blockSignals(true);
+    editor->setFont(currentFont);
+    QFontMetrics metrics(currentFont);
+    editor->setTabStopDistance(currentTabSize * metrics.horizontalAdvance(' '));
+    editor->blockSignals(false);
+
+    markModified(editor, false);
+
+    // Update recent files list
+    recentFiles.removeAll(filePath);        // Remove any previous entry
+    recentFiles.prepend(filePath);          // Add to the top
+    while (recentFiles.size() > 10) {       // Limit list size
+        recentFiles.removeLast();
+    }
+    saveRecentFiles();                      // Persist to QSettings
+    updateRecentFilesMenu();                // Refresh UI menu
 }
 
 void MainWindow::saveFileAs(QTextEdit *editor) {
@@ -796,4 +806,8 @@ void MainWindow::showAboutDialog() {
         "Decode v3.0\n"
         "© 2025 Hellmark Programming Group\n\n"
         "A simple cipher utility that helps make things more secure!");
+}
+
+int MainWindow::indexForEditor(QTextEdit *editor) const {
+    return tabWidget->indexOf(editor);
 }
