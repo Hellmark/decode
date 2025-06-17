@@ -498,15 +498,15 @@ void MainWindow::loadRecentFiles() {
     updateRecentFilesMenu();
 }
 
+// Session saving!
 void MainWindow::saveSession() {
     QSettings settings("Hellmark Programming Group", "Decode");
+    // Saving the current window state
     settings.setValue("window/maximized", isMaximized());
     settings.setValue("window/normalSize", normalGeometry().size());
     settings.setValue("window/normalPos", normalGeometry().topLeft());
-    settings.setValue("geometry", saveGeometry());
-    settings.setValue("windowState", saveState());
-
-    settings.setValue("count", tabWidget->count());
+    settings.setValue("window/geometry", saveGeometry());
+    settings.setValue("window/windowState", saveState());
 
     if (settings.value("window/maximized", false).toBool()) {
         showMaximized();
@@ -514,32 +514,35 @@ void MainWindow::saveSession() {
         resize(settings.value("window/size", QSize(800, 600)).toSize());
         move(settings.value("window/pos", QPoint(200, 200)).toPoint());
     }
-
+    // UI element visibility
     settings.setValue("ui/codecToolbarVisible", codecToolbar->isVisible());
     settings.setValue("ui/mainToolbarVisible", mainToolbar->isVisible());
     settings.setValue("ui/statusBarVisible", statusBar()->isVisible());
     settings.setValue("restorePreviousSession", restorePreviousSession);
 
+    // Tab saving
     settings.beginGroup("session");
+
     QStringList paths;
     QStringList contents;
+    QList<bool> modifiedFlags;
 
-    for (const auto &tab : tabDataMap) {
-        // Add file path, even if empty (new tab)
-        paths << tab.filePath;
-        if (tab.isModified) {
-            // Save unsaved data
-            contents << tab.editor->toPlainText();
-        } else {
-            // Indicates to load from disk
-            contents << "";
-        }
+    for (QTextEdit *editor : tabDataMap.keys()) {
+        const TabData &data = tabDataMap[editor];
+        paths.append(data.filePath);
+        contents.append(editor->toPlainText());
+        modifiedFlags.append(data.isModified);
     }
+
     settings.setValue("filePaths", paths);
     settings.setValue("unsavedContents", contents);
+    settings.setValue("modifiedFlags", QVariant::fromValue(modifiedFlags));
+
     settings.endGroup();
+    settings.sync();
 }
 
+// Session restoration!
 void MainWindow::restoreSession() {
     QSettings settings("Hellmark Programming Group", "Decode");
     int count = settings.value("count").toInt();
@@ -547,39 +550,40 @@ void MainWindow::restoreSession() {
     // Checks if session restoration is wanted, and loads the files if so
     restorePreviousSession = settings.value("restorePreviousSession", true).toBool();
     if (restorePreviousSession) {
+        // Loads the info from the config file
         settings.beginGroup("session");
         QStringList paths = settings.value("filePaths").toStringList();
         QStringList contents = settings.value("unsavedContents").toStringList();
+        QList<QVariant> modifiedRaw = settings.value("modifiedFlags").toList();
+        settings.endGroup();
 
+        // Loops through to load each of the tabs
         for (int i = 0; i < paths.size(); ++i) {
-            const QString &path = paths[i];
-            const QString &content = contents[i];
-            if (paths.size() != contents.size()) {
-                qWarning("Session restore data is inconsistent. Skipping session restore.");
-                return;
+            QString path = i < paths.size() ? paths[i] : "";
+            QString content = i < contents.size() ? contents[i] : "";
+            bool modified = (i < modifiedRaw.size()) ? modifiedRaw[i].toBool() : false;
+
+            newTab();
+            QTextEdit *editor = qobject_cast<QTextEdit *>(tabWidget->currentWidget());
+            if (!editor) continue;
+
+            TabData &data = tabDataMap[editor];
+
+            if (!path.isEmpty()) {
+                data.filePath = path;
             }
-            if (path.isEmpty()) {
-                // Create new tab with content
-                if (!content.isEmpty()) {
-                    int index = newTab();
-                    tabDataMap[editor].editor->setPlainText(content);
-                    markModified(tabData.editor, true);
-                    tabWidget->setTabText(index, "Untitled*");
-                }
-            } else {
-                // load from disk
-                if (!content.isEmpty()) {
-                    int index = newTab();
-                    tabDataMap[editor].filePath = path;
-                    tabDataMap[editor].editor->setPlainText(content);
-                    markModified(tabData.editor, true);
-                    tabWidget->setTabText(index, QFileInfo(path).fileName() + "*");
-                } else {
-                    loadFile(path);
-                }
+
+            editor->blockSignals(true);
+            editor->setPlainText(content);
+            editor->blockSignals(false);
+
+            markModified(editor, modified);
+
+            if (!modified && !path.isEmpty()) {
+                // Load from disk if unchanged
+                loadFile(path);
             }
         }
-        settings.endGroup();
     }
 
     // Saving Window position info, with logic to make sure that things don't get messed up if maximized.
