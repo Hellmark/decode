@@ -606,10 +606,11 @@ void MainWindow::restoreSession() {
 void MainWindow::maybeSaveAndClose(QTextEdit *editor) {
     if (!editor || !tabDataMap.contains(editor)) return;
 
-    TabData data = tabDataMap.value(editor);
-    if (data.isModified) {
+    if (tabDataMap[editor].isModified) {
         auto response = QMessageBox::question(this, "Unsaved Changes",
-                                              "Do you want to save changes before closing?");
+                                              "Do you want to save changes before closing?",
+                                              QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel);
+
         if (response == QMessageBox::Yes) {
             saveFile(editor);
         } else if (response == QMessageBox::Cancel) {
@@ -618,11 +619,12 @@ void MainWindow::maybeSaveAndClose(QTextEdit *editor) {
     }
 
     int index = indexForEditor(editor);
-    if (index != -1) {
-        tabWidget->removeTab(index);
-    }
     tabDataMap.remove(editor);
+    tabWidget->removeTab(index);
     editor->deleteLater();
+
+    if (tabWidget->count() == 0)
+        newFile();
 }
 
 void MainWindow::closeTab(QTextEdit *editor) {
