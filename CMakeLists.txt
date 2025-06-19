@@ -1,15 +1,15 @@
 cmake_minimum_required(VERSION 3.16)
 project(Decode VERSION 3.0 LANGUAGES CXX)
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Required libraries
 find_package(Qt6 REQUIRED COMPONENTS Core Gui Widgets)
 find_package(OpenSSL REQUIRED)
-qt_add_resources(APP_RESOURCES "resources.qrc")
 
 # for MacOS
 # macOS Bundle Setup
@@ -34,7 +34,9 @@ else()
     set(MACOSX_BUNDLE_FLAG "")
 endif()
 
-add_executable(Decode
+# Adding the required components for the build
+qt_add_resources(APP_RESOURCES "resources.qrc")
+add_executable(Decode ${MACOSX_BUNDLE_FLAG}
     main.cpp
     MainWindow.cpp
     MainWindow.h
@@ -59,6 +61,7 @@ add_executable(Decode
     encoders/Rot13.cpp
     encoders/Rot13.h
     ${APP_RESOURCES}
+    ${APP_ICON_MAC}
 )
 
 target_link_libraries(Decode PRIVATE Qt6::Core Qt6::Gui Qt6::Widgets OpenSSL::Crypto)
