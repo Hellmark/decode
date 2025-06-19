@@ -16,7 +16,7 @@
     <key>CFBundleShortVersionString</key>
     <string>3.0</string>
     <key>CFBundleIconFile</key>
-    <string>Decode</string>
+    <string>decode.icns</string>
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>LSMinimumSystemVersion</key>
