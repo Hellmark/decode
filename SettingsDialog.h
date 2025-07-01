@@ -31,6 +31,11 @@ public:
     int getTabSize() const;
     bool shouldRestoreSession() const;
 
+    QString getRSAPublicKeyPath() const;
+    QString getRSAPrivateKeyPath() const;
+    void setRSAPublicKeyPath(const QString &path);
+    void setRSAPrivateKeyPath(const QString &path);
+
 signals:
     void clearRecentFiles();
     void resetUILayout();
@@ -43,6 +48,10 @@ private:
     QPushButton *fontButton;
     QPushButton *clearRecentFilesButton;
     QPushButton *resetUILayoutButton;
+    QLineEdit *rsaPublicKeyEdit;
+    QLineEdit *rsaPrivateKeyEdit;
+    QPushButton *browseRSAPublicKeyButton;
+    QPushButton *browseRSAPrivateKeyButton;
 
 private slots:
     void chooseFont();

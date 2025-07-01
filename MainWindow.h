@@ -33,6 +33,7 @@ public slots:
     void saveFile(QTextEdit *editor);
     void saveFileAs(QTextEdit *editor);
     void openFile();
+    void openFile(const QString &path);
     void openRecentFile();
     void maybeSaveAndClose(QTextEdit *editor);
     void undoLastChange();
@@ -42,24 +43,22 @@ public slots:
     void saveAll();
 
     void setTabSize(int size);
-    int getTabSize() const;
 
     void setRestoreSession(bool restore);
-    bool shouldRestoreSession() const;
 
-    QFont getFont() const;
     void setFont(const QFont &f);
 
     void clearRecentFiles();
     void resetUILayout();
+    void clearSession();
 
 private:
     QTabWidget *tabWidget;
     QComboBox *encoderSelector;
     QCheckBox *decodeCheckBox;
     QLabel *cursorLabel;
-    QPushButton *encodeButton;
-    QPushButton *decodeButton;
+    QAction *encodeAction;
+    QAction *decodeAction;
 
     QToolBar *codecToolbar;
     QToolBar *mainToolbar;
@@ -80,11 +79,19 @@ private:
 
     QStringList recentFiles;
 
+    QFont getFont() const;
     QFont currentFont;
     int currentTabSize;
     bool restorePreviousSession;
+    int getTabSize() const;
+    QString defaultRSAPrivateKeyPath;
+    QString defaultRSAPublicKeyPath;
+
+    bool shouldRestoreSession() const;
 
     int indexForEditor(QTextEdit *editor) const;
+
+    const QString configName = "Hellmark";
 
     QSettings settings;
 
@@ -94,6 +101,7 @@ private:
         bool isModified = false;
         QStack<QString> undoStack;
         QStack<QString> redoStack;
+        QString lastKnownText;
     };
 
     QMap<QTextEdit*, TabData> tabDataMap;
@@ -112,11 +120,15 @@ private:
     void updateCursorStatus();
     void closeEvent(QCloseEvent *event) override;
     void applyEditorSettings();
-    void clearSession();
     void showAboutDialog();
+    QString promptForKeyFile(const QString &title, const QString &defaultPath);
 
     private slots:
         void openSettingsDialog();
+
+protected:
+    void dragEnterEvent(QDragEnterEvent *event) override;
+    void dropEvent(QDropEvent *event) override;
 
 };
 

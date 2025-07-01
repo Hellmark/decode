@@ -4,10 +4,13 @@
 #include <QFormLayout>
 #include <QSpinBox>
 #include <QFontDialog>
+#include <QFileDialog>
+#include <QFileDevice>
 #include <QCheckBox>
 #include <QPushButton>
 #include <QSettings>
 #include <QMessageBox>
+#include <QLineEdit>
 
 SettingsDialog::SettingsDialog(QWidget *parent) : QDialog(parent) {
     setWindowTitle("Settings");
@@ -15,19 +18,53 @@ SettingsDialog::SettingsDialog(QWidget *parent) : QDialog(parent) {
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
     QFormLayout *formLayout = new QFormLayout;
 
+    // Sets the labels to be aligned to the left, so they're not all willy nilly.
+    formLayout->setLabelAlignment(Qt::AlignLeft);
+
+    // Font picker
     fontButton = new QPushButton("Choose Font");
     connect(fontButton, &QPushButton::clicked, this, &SettingsDialog::chooseFont);
     formLayout->addRow("Font:", fontButton);
 
+    // Tab Size
     tabSizeSpin = new QSpinBox;
     tabSizeSpin->setRange(2, 16);
     formLayout->addRow("Tab Size:", tabSizeSpin);
 
+    // Checkbox for session restoration
     restoreSessionCheck = new QCheckBox("Restore previous session");
     formLayout->addRow(restoreSessionCheck);
 
+    // RSA key fields, done in a compact grid
+    QLabel *rsaPublicLabel = new QLabel("RSA Public Key:", this);
+    rsaPublicKeyEdit = new QLineEdit(this);
+    browseRSAPublicKeyButton = new QPushButton("Browse...", this);
+
+    QLabel *rsaPrivateLabel = new QLabel("RSA Private Key:", this);
+    rsaPrivateKeyEdit = new QLineEdit(this);
+    browseRSAPrivateKeyButton = new QPushButton("Browse...", this);
+
+    QGridLayout *rsaGrid = new QGridLayout;
+    rsaGrid->setVerticalSpacing(4);
+    rsaGrid->setHorizontalSpacing(8);
+    rsaGrid->addWidget(rsaPublicLabel, 0, 0);
+    rsaGrid->addWidget(rsaPublicKeyEdit, 0, 1);
+    rsaGrid->addWidget(browseRSAPublicKeyButton, 0, 2);
+
+    rsaGrid->addWidget(rsaPrivateLabel, 1, 0);
+    rsaGrid->addWidget(rsaPrivateKeyEdit, 1, 1);
+    rsaGrid->addWidget(browseRSAPrivateKeyButton, 1, 2);
+
+    // Wrap the grid layout in a QWidget so it can be added to formLayout as one row
+    QWidget *rsaWidget = new QWidget(this);
+    rsaWidget->setLayout(rsaGrid);
+
+    // Now insert into the form layout
+    formLayout->addRow(rsaWidget);
+
     mainLayout->addLayout(formLayout);
 
+    // Clearing recent files and resetting UI, to help with any potential issues
     QHBoxLayout *buttonLayout = new QHBoxLayout;
     clearRecentFilesButton = new QPushButton("Clear Recent Files");
     resetUILayoutButton = new QPushButton("Reset UI");
@@ -57,6 +94,7 @@ SettingsDialog::SettingsDialog(QWidget *parent) : QDialog(parent) {
     });
 }
 
+// Functions for passing info to and from the main window
 void SettingsDialog::chooseFont() {
     bool ok;
     QFont selected = QFontDialog::getFont(&ok, selectedFont, this);
@@ -89,4 +127,17 @@ bool SettingsDialog::shouldRestoreSession() const {
 
 void SettingsDialog::setRestoreSession(bool restore) {
     restoreSessionCheck->setChecked(restore);
+}
+
+QString SettingsDialog::getRSAPublicKeyPath() const {
+    return rsaPublicKeyEdit->text();
+}
+QString SettingsDialog::getRSAPrivateKeyPath() const {
+    return rsaPrivateKeyEdit->text();
+}
+void SettingsDialog::setRSAPublicKeyPath(const QString &path) {
+    rsaPublicKeyEdit->setText(path);
+}
+void SettingsDialog::setRSAPrivateKeyPath(const QString &path) {
+    rsaPrivateKeyEdit->setText(path);
 }

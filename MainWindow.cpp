@@ -16,15 +16,15 @@
 #include <QMenu>
 #include <QByteArray>
 #include <QTextEdit>
-#include <QDateTime>
 #include <QTextCursor>
 #include <QLabel>
 #include <QComboBox>
 #include <QCheckBox>
-#include <QPushButton>
 #include <QLabel>
 #include <QClipboard>
 #include <QGuiApplication>
+#include <QMimeData>
+#include <QUrl>
 
 //Includes for the codecs
 #include "encoders/Base64Codec.h"
@@ -36,6 +36,7 @@
 #include "encoders/Atbash.h"
 #include "encoders/MorseCodec.h"
 #include "encoders/AESCodec.h"
+#include "encoders/RSACodec.h"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent) {
@@ -67,7 +68,9 @@ void MainWindow::setupUI() {
     newAction->setShortcut(QKeySequence::New);
 
     QAction *openAction = new QAction(QIcon::fromTheme("document-open"), "Open", this);
-    connect(openAction, &QAction::triggered, this, &MainWindow::openFile);
+    connect(openAction, &QAction::triggered, this, [this]() {
+        openFile();
+    });
     openAction->setShortcut(QKeySequence::Open);
 
     QAction *saveAction = new QAction(QIcon::fromTheme("document-save"), "Save", this);
@@ -78,13 +81,21 @@ void MainWindow::setupUI() {
     });
     saveAction->setShortcut(QKeySequence::Save);
 
-    QAction *saveAllAction = new QAction(QIcon::fromTheme("document-save-all"), "Save All", this);
+    QIcon saveAllIcon = QIcon::hasThemeIcon("document-save-all")
+                             ? QIcon::fromTheme("document-save-all")
+                             : QIcon::fromTheme("sync-synchronizing");
+    QAction *saveAllAction = new QAction(saveAllIcon, "Save All", this);
     connect(saveAllAction, &QAction::triggered, this, &MainWindow::saveAll);
     saveAllAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_S));
 
-    //QAction *closeAction = new QAction(QIcon::fromTheme("window-close"), "Close Document", this);
-    //connect(closeAction, &QAction::triggered, this, &MainWindow::closeTab);
-    //saveAllAction->setShortcut(QKeySequence(QKeySequence::Close));
+    QAction *closeAction = new QAction(QIcon::fromTheme("window-close"), "Close Document", this);
+    closeAction->setShortcut(QKeySequence::Close);
+    connect(closeAction, &QAction::triggered, this, [this]() {
+        QWidget *current = tabWidget->currentWidget();
+        if (auto *editor = qobject_cast<QTextEdit *>(current)) {
+            maybeSaveAndClose(editor);
+        }
+    });
 
     QAction *undoAction = new QAction(QIcon::fromTheme("edit-undo"), "Undo", this);
     connect(undoAction, &QAction::triggered, this, &MainWindow::undoLastChange);
@@ -123,7 +134,10 @@ void MainWindow::setupUI() {
     });
     pasteAction->setShortcut(QKeySequence::Paste);
 
-    QAction *settingsAction = new QAction(QIcon::fromTheme("preferences-system"), "Settings", this);
+    QIcon settingsIcon = QIcon::hasThemeIcon("preferences-system")
+                             ? QIcon::fromTheme("preferences-system")
+                             : QIcon::fromTheme("emblem-system");
+    QAction *settingsAction = new QAction(settingsIcon, "Settings", this);
     connect(settingsAction, &QAction::triggered, this, &MainWindow::openSettingsDialog);
     settingsAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_Comma));
 
@@ -131,6 +145,8 @@ void MainWindow::setupUI() {
     mainToolbar->addAction(openAction);
     mainToolbar->addAction(saveAction);
     mainToolbar->addAction(saveAllAction);
+    mainToolbar->addSeparator();
+    mainToolbar->addAction(closeAction);
     mainToolbar->addSeparator();
     mainToolbar->addAction(copyAction);
     mainToolbar->addAction(cutAction);
@@ -145,18 +161,23 @@ void MainWindow::setupUI() {
     codecToolbar = addToolBar("Codec Toolbar");
     codecToolbar->setObjectName("codecToolbar");
     encoderSelector = new QComboBox;
-    QPushButton *encodeButton = new QPushButton("Encode");
-    QPushButton *decodeButton = new QPushButton("Decode");
-    encoderSelector->addItems({"Base64", "Binary", "Hex", "Caesar", "ROT13", "Morse", "Atbash", "Pig Latin", "AES"});
+    encodeAction = new QAction(QIcon::fromTheme("list-add"), "Encode", this);
+    decodeAction = new QAction(QIcon::fromTheme("list-remove"), "Decode", this);
+    encoderSelector->addItems({"Base64", "Binary", "Hex", "Caesar", "ROT13", "Morse", "Atbash", "Pig Latin", "AES", "RSA"});
     codecToolbar->addWidget(encoderSelector);
-    codecToolbar->addWidget(encodeButton);
-    codecToolbar->addWidget(decodeButton);
+    codecToolbar->addAction(encodeAction);
+    codecToolbar->addAction(decodeAction);
 
-    connect(encodeButton, &QPushButton::clicked, this, [this]() {
-        encodeCurrentText(encoderSelector->currentText());
+    connect(encodeAction, &QAction::triggered, this, [this]() {
+        QTextEdit *editor = qobject_cast<QTextEdit *>(tabWidget->currentWidget());
+        if (editor)
+            encodeCurrentText(encoderSelector->currentText());
     });
-    connect(decodeButton, &QPushButton::clicked, this, [this]() {
-        decodeCurrentText(encoderSelector->currentText());
+
+    connect(decodeAction, &QAction::triggered, this, [this]() {
+        QTextEdit *editor = qobject_cast<QTextEdit *>(tabWidget->currentWidget());
+        if (editor)
+            decodeCurrentText(encoderSelector->currentText());
     });
 
     // Menus
@@ -175,6 +196,8 @@ void MainWindow::setupUI() {
 
     fileMenu->addAction(saveAction);
     fileMenu->addAction(saveAllAction);
+    fileMenu->addSeparator();
+    fileMenu->addAction(closeAction);
     fileMenu->addSeparator();
     QAction *quitAction = new QAction("Quit", this);
     connect(quitAction, &QAction::triggered, this, &QWidget::close);
@@ -245,6 +268,7 @@ void MainWindow::setupUI() {
     connect(aboutAction, &QAction::triggered, this, &MainWindow::showAboutDialog);
     aboutAction->setShortcut(QKeySequence::HelpContents);
 
+    setAcceptDrops(true);
     applyEditorSettings();
 }
 
@@ -265,17 +289,25 @@ void MainWindow::updateCursorStatus() {
 
 void MainWindow::newTab() {
     QTextEdit *editor = new QTextEdit(this);
+    editor->setAcceptDrops(false);
     tabWidget->addTab(editor, "Untitled");
     tabWidget->setCurrentWidget(editor);
 
     TabData data;
     data.editor = editor;
     data.isModified = false;
+    data.lastKnownText = "";
     tabDataMap[editor] = data;
 
     connect(editor, &QTextEdit::cursorPositionChanged, this, &MainWindow::updateCursorStatus);
     connect(editor, &QTextEdit::textChanged, this, [this, editor]() {
-        markModified(editor, true);
+        if (tabDataMap.contains(editor)) {
+            QString currentText = editor->toPlainText();
+            if (currentText != tabDataMap[editor].lastKnownText) {
+                tabDataMap[editor].lastKnownText = currentText;
+                markModified(editor, true);
+            }
+        }
     });
 }
 
@@ -345,11 +377,23 @@ void MainWindow::encodeCurrentText(const QString &method) {
         QString key = QInputDialog::getText(this, "AES Key", "Enter encryption key:", QLineEdit::Password, "", &ok);
         if (!ok || key.isEmpty()) return;
         result = AESCodec::encode(text, key);
+    } else if (method == "RSA") {
+        QString key = promptForKeyFile("Select RSA Public Key", defaultRSAPublicKeyPath);
+
+        if (key.isEmpty()) return;
+
+        QByteArray input = text.toUtf8();
+        QByteArray output = RSACodec::encode(input, key);
+
+        if (!output.isEmpty()) {
+            result=output.toBase64();
+        } else {
+            QMessageBox::warning(this, "RSA Error", "RSA encoding failed. Check key and input size.");
+        }
     } else {
         QMessageBox::warning(this, "Unknown Codec", "The selected decoding method is not supported.");
         return;
     }
-
     editor->setPlainText(result);
     markModified(editor, true);
 }
@@ -385,23 +429,42 @@ void MainWindow::decodeCurrentText(const QString &method) {
         QString key = QInputDialog::getText(this, "AES Key", "Enter decryption key:", QLineEdit::Password, "", &ok);
         if (!ok || key.isEmpty()) return;
         result = AESCodec::decode(text, key);
+    } else if (method == "RSA") {
+        QString key = promptForKeyFile("Select RSA Private Key", defaultRSAPrivateKeyPath);
+
+        if (key.isEmpty()) return;
+        QByteArray input = QByteArray::fromBase64(text.toUtf8());
+        QByteArray output = RSACodec::decode(input, key);
+
+        if (!output.isEmpty()) {
+            result = QString::fromUtf8(output);
+        } else {
+            QMessageBox::warning(this, "RSA Error", "RSA encoding failed. Check key and input size.");
+        }
     } else {
         QMessageBox::warning(this, "Unknown Codec", "The selected decoding method is not supported.");
         return;
     }
-
     editor->setPlainText(result);
     markModified(editor, true);
 }
 
 void MainWindow::openFile() {
-    QString filePath = QFileDialog::getOpenFileName(this, "Open File");
-    if (!filePath.isEmpty()) {
-        loadFile(filePath);
+    QObject *senderObj = sender();
+    if (qobject_cast<QAction *>(senderObj)) {
+        QString filePath = QFileDialog::getOpenFileName(this, "Open File");
+        if (!filePath.isEmpty()) {
+            loadFile(filePath);
+        }
     }
 }
 
+void MainWindow::openFile(const QString &path) {
+    loadFile(path);
+}
+
 void MainWindow::loadFile(const QString &filePath) {
+    qDebug() << "Loading file:" << filePath;
     QFile file(filePath);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         QMessageBox::warning(this, "Error", "Could not open file");
@@ -424,6 +487,7 @@ void MainWindow::loadFile(const QString &filePath) {
     data.filePath = filePath;
     data.isModified = false;
     tabDataMap[editor] = data;
+    tabDataMap[editor].lastKnownText = content;
 
     connect(editor, &QTextEdit::cursorPositionChanged, this, &MainWindow::updateCursorStatus);
     connect(editor, &QTextEdit::textChanged, this, [this, editor]() {
@@ -447,10 +511,13 @@ void MainWindow::loadFile(const QString &filePath) {
     }
     saveRecentFiles();                      // Persist to QSettings
     updateRecentFilesMenu();                // Refresh UI menu
+
+    qDebug() << "File loaded and tab added successfully.";
 }
 
 void MainWindow::saveFileAs(QTextEdit *editor) {
     if (!editor || !tabDataMap.contains(editor)) return;
+    TabData &data = tabDataMap[editor];
 
     QString filePath = QFileDialog::getSaveFileName(this, "Save File As");
     if (filePath.isEmpty()) return;
@@ -465,8 +532,9 @@ void MainWindow::saveFileAs(QTextEdit *editor) {
     out << editor->toPlainText();
     file.close();
 
-    tabDataMap[editor].filePath = filePath;
-    tabDataMap[editor].isModified = false;
+    data.filePath = filePath;
+    data.isModified = false;
+    data.lastKnownText = editor->toPlainText();
 
     int index = indexForEditor(editor);
     if (index >= 0) {
@@ -498,6 +566,7 @@ void MainWindow::saveFile(QTextEdit *editor) {
     file.close();
 
     data.isModified = false;
+    data.lastKnownText = editor->toPlainText();
     markModified(editor, false);
 }
 
@@ -537,19 +606,19 @@ void MainWindow::updateRecentFilesMenu() {
 }
 
 void MainWindow::saveRecentFiles() {
-    QSettings settings("Hellmark Programming Group", "Decode");
+    QSettings settings(configName, "Decode");
     settings.setValue("recentFiles", recentFiles);
 }
 
 void MainWindow::loadRecentFiles() {
-    QSettings settings("Hellmark Programming Group", "Decode");
+    QSettings settings(configName, "Decode");
     recentFiles = settings.value("recentFiles").toStringList();
     updateRecentFilesMenu();
 }
 
 // Session saving!
 void MainWindow::saveSession() {
-    QSettings settings("Hellmark Programming Group", "Decode");
+    QSettings settings(configName, "Decode");
     // Saving the current window state
     settings.setValue("window/maximized", isMaximized());
     settings.setValue("window/normalSize", normalGeometry().size());
@@ -587,14 +656,14 @@ void MainWindow::saveSession() {
     settings.setValue("unsavedContents", contents);
     settings.setValue("modifiedFlags", QVariant::fromValue(modifiedFlags));
 
+
     settings.endGroup();
     settings.sync();
 }
 
 // Session restoration!
 void MainWindow::restoreSession() {
-    QSettings settings("Hellmark Programming Group", "Decode");
-    int count = settings.value("count").toInt();
+    QSettings settings(configName, "Decode");
 
     // Checks if session restoration is wanted, and loads the files if so
     restorePreviousSession = settings.value("restorePreviousSession", true).toBool();
@@ -729,7 +798,7 @@ void MainWindow::redoLastChange() {
 
 void MainWindow::closeEvent(QCloseEvent *event) {
     saveSession();
-    QSettings settings("Hellmark Programming Group", "Decode");
+    QSettings settings(configName, "Decode");
     QMainWindow::closeEvent(event);
 }
 
@@ -738,27 +807,36 @@ void MainWindow::openSettingsDialog() {
     dialog.setFont(currentFont);
     dialog.setTabSize(currentTabSize);
     dialog.setRestoreSession(restorePreviousSession);
+    dialog.setRSAPublicKeyPath(defaultRSAPublicKeyPath);
+    dialog.setRSAPrivateKeyPath(defaultRSAPrivateKeyPath);
 
     connect(&dialog, &SettingsDialog::clearRecentFiles, this, &MainWindow::clearRecentFiles);
     connect(&dialog, &SettingsDialog::resetUILayout, this, &MainWindow::resetUILayout);
 
     if (dialog.exec() == QDialog::Accepted) {
-        QSettings settings("Hellmark Programming Group", "Decode");
+        QSettings settings(configName, "Decode");
         settings.setValue("editor/font", dialog.getFont());
         settings.setValue("editor/tabSize", dialog.getTabSize());
+        settings.setValue("editor/RSAPublicKeyPath", dialog.getRSAPublicKeyPath());
+        settings.setValue("editor/RSAPrivateKeyPath", dialog.getRSAPrivateKeyPath());
+
         //settings.setValue("editor/restoreSession", dialog.shouldRestoreSession());
         currentFont = dialog.getFont();
         currentTabSize = dialog.getTabSize();
         restorePreviousSession = dialog.shouldRestoreSession();
+        defaultRSAPublicKeyPath = dialog.getRSAPublicKeyPath();
+        defaultRSAPrivateKeyPath = dialog.getRSAPrivateKeyPath();
         applyEditorSettings();
     }
 }
 
 void MainWindow::applyEditorSettings() {
-    QSettings settings("Hellmark Programming Group", "Decode");
+    QSettings settings(configName, "Decode");
     currentFont = settings.value("editor/font", QFont("Monospace", 10)).value<QFont>();
     currentTabSize = settings.value("editor/tabSize", 4).toInt();
     restorePreviousSession = settings.value("editor/restoreSession", true).toBool();
+    defaultRSAPublicKeyPath = settings.value("editor/RSAPublicKeyPath", "").toString();
+    defaultRSAPrivateKeyPath = settings.value("editor/RSAPrivateKeyPath", "").toString();
 
     for (auto &tab : tabDataMap) {
         if (tab.editor) {
@@ -770,7 +848,7 @@ void MainWindow::applyEditorSettings() {
 }
 
 void MainWindow::clearRecentFiles() {
-    QSettings settings("Hellmark Programming Group", "Decode");
+    QSettings settings(configName, "Decode");
     recentFiles.clear();
     updateRecentFilesMenu();
     settings.remove("recentFiles");
@@ -778,7 +856,7 @@ void MainWindow::clearRecentFiles() {
 
 void MainWindow::resetUILayout() {
 
-    QSettings settings("Hellmark Programming Group", "Decode");
+    QSettings settings(configName, "Decode");
     settings.remove("geometry");
     settings.remove("windowState");
     settings.remove("mainToolbarVisible");
@@ -829,9 +907,9 @@ void MainWindow::setFont(const QFont &font) {
 }
 
 void MainWindow::clearSession() {
-    QSettings settings("Hellmark Programming Group", "Decode");
+    QSettings settings(configName, "Decode");
     settings.beginGroup("session");
-    settings.remove("");  // Remove everything
+    settings.remove("");
     settings.endGroup();
 }
 
@@ -844,4 +922,57 @@ void MainWindow::showAboutDialog() {
 
 int MainWindow::indexForEditor(QTextEdit *editor) const {
     return tabWidget->indexOf(editor);
+}
+
+void MainWindow::dragEnterEvent(QDragEnterEvent *event) {
+    if (event->mimeData()->hasUrls() || event->mimeData()->hasText()) {
+        event->acceptProposedAction();
+    } else {
+        event->ignore();
+    }
+}
+
+void MainWindow::dropEvent(QDropEvent *event) {
+    if (event->mimeData()->hasUrls()) {
+        QList<QUrl> urls = event->mimeData()->urls();
+        for (const QUrl &url : urls) {
+            if (url.isLocalFile()) {
+                loadFile(url.toLocalFile());
+            }
+        }
+        event->acceptProposedAction();
+    } else if (event->mimeData()->hasText()) {
+        QTextEdit *editor = qobject_cast<QTextEdit *>(centralWidget()->focusWidget());
+        if (editor) {
+            editor->insertPlainText(event->mimeData()->text());
+        }
+        event->acceptProposedAction();
+    } else {
+        event->ignore();
+    }
+}
+
+QString MainWindow::promptForKeyFile(const QString &title, const QString &defaultPath)
+{
+    QDialog dialog(this);
+    dialog.setWindowTitle(title);
+    QVBoxLayout *layout = new QVBoxLayout(&dialog);
+    QLineEdit *lineEdit = new QLineEdit(defaultPath);
+    QPushButton *browseButton = new QPushButton("Browse...");
+    QHBoxLayout *hbox = new QHBoxLayout;
+    hbox->addWidget(lineEdit);
+    hbox->addWidget(browseButton);
+    layout->addLayout(hbox);
+
+    connect(browseButton, &QPushButton::clicked, [&]() {
+        QString filePath = QFileDialog::getOpenFileName(&dialog, "Select Key File", lineEdit->text());
+        if (!filePath.isEmpty()) lineEdit->setText(filePath);
+    });
+
+    QDialogButtonBox *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel);
+    layout->addWidget(buttons);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+    return dialog.exec() == QDialog::Accepted ? lineEdit->text() : QString();
 }
