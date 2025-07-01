@@ -25,6 +25,7 @@
 #include <QGuiApplication>
 #include <QMimeData>
 #include <QUrl>
+#include <QDialogButtonBox>
 
 //Includes for the codecs
 #include "encoders/Base64Codec.h"
