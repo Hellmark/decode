@@ -60,6 +60,8 @@ add_executable(Decode ${MACOSX_BUNDLE_FLAG}
     encoders/PigLatin.h
     encoders/Rot13.cpp
     encoders/Rot13.h
+    encoders/RSACodec.cpp
+    encoders/RSACodec.h
     ${APP_RESOURCES}
     ${APP_ICON_MAC}
 )
