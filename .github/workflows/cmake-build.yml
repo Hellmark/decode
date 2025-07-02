@@ -1,4 +1,4 @@
-name: CI Build & Package
+name: Cross-Platform Build & Package
 
 on:
   push:
@@ -7,50 +7,45 @@ on:
 
 jobs:
   build:
+    name: Build ${{ matrix.os }} ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-        arch: [x64, arm64]
-    name: ${{ matrix.os }}-${{ matrix.arch }}
+        include:
+          - os: ubuntu-latest
+            arch: x64
+          - os: macos-latest
+            arch: x64
+          - os: macos-latest
+            arch: arm64
+          - os: windows-latest
+            arch: x64
 
     steps:
-      - name: Checkout code
+      - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Setup CMake & compiler
-        uses: jwlawson/actions-setup-cmake@v3
+      - name: Set up CMake
+        uses: lukka/get-cmake@latest
 
-      - name: Select platform
-        if: matrix.os == 'windows-latest'
-        run: choco install mingw make
-
-      - name: Configure CMake
+      - name: Configure project
         run: |
           mkdir build
           cd build
-          cmake .. \
-            -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_CXX_STANDARD=17 \
-            -DCMAKE_GENERATOR_PLATFORM=${{ matrix.arch == 'arm64' && matrix.os == 'windows-latest' && 'ARM' || matrix.arch == 'arm64' && (matrix.os == 'macos-latest' && 'arm64' || matrix.os == 'ubuntu-latest' && 'aarch64') || 'x64' }}
+          cmake .. -DCMAKE_BUILD_TYPE=Release
 
-      - name: Build
+      - name: Build project
         run: |
           cd build
           cmake --build . --config Release --parallel
 
-      - name: Package build
+      - name: Package binaries
         run: |
           cd build
-          if [[ "${{ runner.os }}" == "Windows" ]]; then
-            & powershell Compress-Archive -Path Release\* -DestinationPath Decode-${{ matrix.os }}-${{ matrix.arch }}.zip
-          else
-            zip -j Decode-${{ matrix.os }}-${{ matrix.arch }}.zip *
-          fi
+          zip -r ../Decode-${{ matrix.os }}-${{ matrix.arch }}.zip . || powershell Compress-Archive -Path * -DestinationPath ../Decode-${{ matrix.os }}-${{ matrix.arch }}.zip
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: Decode-${{ matrix.os }}-${{ matrix.arch }}
-          path: |
-            build/Decode-${{ matrix.os }}-${{ matrix.arch }}.zip
+          path: Decode-${{ matrix.os }}-${{ matrix.arch }}.zip
