@@ -1,51 +1,81 @@
-name: Cross-Platform Build & Package
+name: Static Qt Build & Package
 
 on:
+  workflow_dispatch:
   push:
-    branches: [ main, master ]
-  pull_request:
+    tags: ["v*"]
 
 jobs:
   build:
-    name: Build ${{ matrix.os }} ${{ matrix.arch }}
+    name: Static ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         include:
           - os: ubuntu-latest
-            arch: x64
+            qt_arch: gcc_64
           - os: macos-latest
-            arch: x64
-          - os: macos-latest
-            arch: arm64
+            qt_arch: clang_64
           - os: windows-latest
-            arch: x64
+            qt_arch: win64_msvc2019_64
 
     steps:
-      - name: Checkout source
+      - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up CMake
-        uses: lukka/get-cmake@latest
-
-      - name: Configure project
+      - name: Install dependencies (Linux)
+        if: matrix.os == 'ubuntu-latest'
         run: |
-          mkdir build
-          cd build
-          cmake .. -DCMAKE_BUILD_TYPE=Release
+          sudo apt update
+          sudo apt install -y build-essential perl python3 git \
+            libxkbcommon-dev libegl1-mesa-dev libgl1-mesa-dev \
+            libfontconfig1-dev libfreetype6-dev libicu-dev \
+            libpng-dev libjpeg-dev libglib2.0-dev cmake ninja-build
 
-      - name: Build project
+      - name: Install dependencies (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew install cmake ninja coreutils
+
+      - name: Install dependencies (Windows)
+        if: matrix.os == 'windows-latest'
+        run: choco install ninja cmake strawberryperl git
+
+      - name: Clone Qt source
+        run: |
+          git clone https://code.qt.io/qt/qt5.git qt6-src
+          cd qt6-src
+          git checkout v6.6.2
+          perl init-repository --module-subset=qtbase,qttools
+
+      - name: Configure Qt (static)
+        run: |
+          mkdir qt6-static && cd qt6-static
+          ../qt6-src/configure -prefix ${{ github.workspace }}/qt6-install \
+            -static -release -opensource -confirm-license \
+            -nomake tests -nomake examples -skip qtdeclarative -skip qtquick3d
+
+      - name: Build & Install Qt
+        run: |
+          cd qt6-static
+          cmake --build . --parallel
+          cmake --install .
+
+      - name: Configure CMake project
+        run: |
+          mkdir build && cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="${{ github.workspace }}/qt6-install" -DBUILD_SHARED_LIBS=OFF -DQt6_STATIC=ON
+
+      - name: Build statically linked binary
+        run: cmake --build build --config Release --parallel
+
+      - name: Package static binary
         run: |
           cd build
-          cmake --build . --config Release --parallel
+          zip -r ../Decode-static-${{ matrix.os }}.zip . || powershell Compress-Archive -Path * -DestinationPath ../Decode-static-${{ matrix.os }}.zip
 
-      - name: Package binaries
-        run: |
-          cd build
-          zip -r ../Decode-${{ matrix.os }}-${{ matrix.arch }}.zip . || powershell Compress-Archive -Path * -DestinationPath ../Decode-${{ matrix.os }}-${{ matrix.arch }}.zip
-
-      - name: Upload build artifact
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Decode-${{ matrix.os }}-${{ matrix.arch }}
-          path: Decode-${{ matrix.os }}-${{ matrix.arch }}.zip
+          name: Decode-static-${{ matrix.os }}
+          path: Decode-static-${{ matrix.os }}.zip
