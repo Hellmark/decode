@@ -45,13 +45,15 @@ If you're building using CMake, things should be pretty much ready to go, with t
 
 For the most simple you could do the following:
 
-  ```cmake .
+  ```
+  cmake .
   make
   ```
 
 If you're wanting a little more clean build, with the source directory being kept clean, you could do the following:
 
-  ```mkdir build
+  ```
+  mkdir build
   cd build
   cmake -S ../ -B ./
   make
