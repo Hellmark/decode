@@ -95,8 +95,8 @@ QString useCodec(const QString &inputFile, const QString &outputFile,
 void printUsage() {
     QTextStream out(stdout);
     out << "Usage:\n"
-        << "  decode -i <input_file> -o <output_file> -f <encode|decode> -c <codec>\n\n"
-        << "Available codecs: base64, rot13, caesar, binary, hex, piglatin, atbash, morse, aes\n";
+        << "  decode -i <input_file> -o <output_file> -f <encode|decode> -c <codec>\n\n -k <key>"
+        << "Available codecs: base64, rot13, caesar, binary, hex, piglatin, atbash, morse, aes, rsa\n";
 }
 
 int main(int argc, char *argv[]) {

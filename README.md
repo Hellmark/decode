@@ -5,6 +5,36 @@ One of the primary ideas behind Decode was enabling the layering of multiple dif
 
 Uses [Qt6](https://www.qt.io), and [QHotkey](https://github.com/Hellmark/QHotkey), set up to be built using [CMake](https://www.cmake.org)
 
+## How to use
+
+### GUI
+
+Decode's basic operation is pretty simple. If you're using the Qt based GUI, it opens up like a text editor, and you can then place the text that you want to encode or decode into the text field, and then select the operation to perform. One of the big concepts is the ability to perform multiple operations on a given text to increase difficulty for unintended parties to find the real meaning.
+
+If you're going to use the RSA encoding, it makes use of GPG private and public pem key files. Public to encode, and private to decode. You can save a default key in settings and when performing an RSA action, select a different key if desired or remain with the default.
+
+### Commandline
+
+Decode's base operations are also include for use from a CLI. Make use of the following flags when using at the commandline
+
+- **-i** or **--input**
+  - specify the path of the file used for input
+
+- **-o** or **--output** (optional)
+  - specify the path of the file used for output. If none are specified, it will output to stdout.
+
+- **-f** or **--function**
+  - specify whether to **encode** or **decode**
+
+- **-c** or **--codec**
+  - declare which codec to use. Available options are base64, rot13, caesar, binary, hex, piglatin, atbash, morse, aes, rsa
+
+- **-k** or **--key** (only for AES or RSA codecs)
+  - state the key to be used for encoding or decoding. For AES, this is a text string like a password. For RSA, this would be the path for the gpg key file.
+
+- **-h** or **--help**
+  - this will state the basic CLI options for assistance.
+
 ## How to build
 
 Included is a .pro file for use for building using Qt Creator / qmake, and a CMakeLists.txt file for use with CMake.
