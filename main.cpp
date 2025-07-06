@@ -95,8 +95,17 @@ QString useCodec(const QString &inputFile, const QString &outputFile,
 void printUsage() {
     QTextStream out(stdout);
     out << "Usage:\n"
-        << "  decode -i <input_file> -o <output_file> -f <encode|decode> -c <codec>\n\n -k <key>"
-        << "Available codecs: base64, rot13, caesar, binary, hex, piglatin, atbash, morse, aes, rsa\n";
+        << "     decode -i <input_file> -o <output_file> -f <encode|decode> -c <codec> -k <key>\n\n"
+        << "Available codecs: base64, rot13, caesar, binary, hex, piglatin, atbash, morse, aes, rsa\n\n"
+        << "Arguments that may be used:"
+        << "-i, --input          file path for the input file.\n"
+        << "-o, --output         file path for the output file (optional)\n"
+        << "-f, --function       function to be performed, either encode or decode\n"
+        << "-c, --codec          codec to be used for the encoding or decoding\n"
+        << "-k, --key            the key to be used for encoding or decoding.\n"
+        << "                     For AES, this is a text string like a password.\n"
+        << "                     For RSA, this would be the path for the gpg key file.\n"
+        << "-h, --help           for outputting this dialog.\n";
 }
 
 int main(int argc, char *argv[]) {
