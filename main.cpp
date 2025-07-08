@@ -106,6 +106,7 @@ void printUsage() {
         << "                     For AES, this is a text string like a password.\n"
         << "                     For RSA, this would be the path for the gpg key file.\n"
         << "-h, --help           for outputting this dialog.\n";
+        << "--clear-session      clears the session data used by GUI.\n"
 }
 
 int main(int argc, char *argv[]) {
