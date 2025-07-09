@@ -68,3 +68,17 @@ A .pro file is included for use with Qt's own build tools, but some work may nee
 In the testing that has been done so far, some complications seem to arise with Macs, especially in regard to [Homebrew](https://www.brew.sh). Certain aspects may not be included in your path by default, and may need to be supplied. To do this, in the Decode.pro file, if you have issues regarding OpenSSL not being found, uncomment the LIBS and INCLUDEPATH lines. After it has been uncommented, make sure that the values reflect the version installed on your system.
 
 Homebrew also doesn't necessarily support universal binaries at this point, so you may need to comment out the architecture that you're not currently using. So, like if you're on Apple silicon, set QMAKE_APPLE_DEVICE_ARCHS to just arm64.
+
+## MacOS notes
+
+if you are wanting to run the version that is being built via Github actions, currently Apple security might prevent you. After extracting from the DMG, run the following command upon it:
+
+```
+sudo xattr -rd com.apple.quarantine Decode.app
+```
+
+This will bypass some of the security and allow it to run normally.
+
+It is planned to have an Apple Developer ID certificate added in the near future, but until that can be done this is an appropriate work around.
+
+Since everything is done using github actions, you can easily compare against the code for that particular release if you have questions about security in the meanwhile.
