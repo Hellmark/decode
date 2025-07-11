@@ -35,6 +35,9 @@ Decode's base operations are also include for use from a CLI. Make use of the fo
 - **-h** or **--help**
   - this will state the basic CLI options for assistance.
 
+- **--clear-session**
+  - This will clear the session data that the GUI uses.
+
 ## How to build
 
 Included is a .pro file for use for building using Qt Creator / qmake, and a CMakeLists.txt file for use with CMake.
