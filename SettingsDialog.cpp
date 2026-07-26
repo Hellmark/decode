@@ -62,6 +62,16 @@ SettingsDialog::SettingsDialog(QWidget *parent) : QDialog(parent) {
     // Now insert into the form layout
     formLayout->addRow(rsaWidget);
 
+    // Wire up the Browse buttons to populate the key path fields
+    connect(browseRSAPublicKeyButton, &QPushButton::clicked, this, [this]() {
+        QString filePath = QFileDialog::getOpenFileName(this, "Select RSA Public Key", rsaPublicKeyEdit->text());
+        if (!filePath.isEmpty()) rsaPublicKeyEdit->setText(filePath);
+    });
+    connect(browseRSAPrivateKeyButton, &QPushButton::clicked, this, [this]() {
+        QString filePath = QFileDialog::getOpenFileName(this, "Select RSA Private Key", rsaPrivateKeyEdit->text());
+        if (!filePath.isEmpty()) rsaPrivateKeyEdit->setText(filePath);
+    });
+
     mainLayout->addLayout(formLayout);
 
     // Clearing recent files and resetting UI, to help with any potential issues
