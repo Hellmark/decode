@@ -378,6 +378,10 @@ void MainWindow::encodeCurrentText(const QString &method) {
         QString key = QInputDialog::getText(this, "AES Key", "Enter encryption key:", QLineEdit::Password, "", &ok);
         if (!ok || key.isEmpty()) return;
         result = AESCodec::encode(text, key);
+        if (result.isEmpty()) {
+            QMessageBox::warning(this, "AES Error", "AES encoding failed.");
+            return;
+        }
     } else if (method == "RSA") {
         QString key = promptForKeyFile("Select RSA Public Key", defaultRSAPublicKeyPath);
 
@@ -390,6 +394,7 @@ void MainWindow::encodeCurrentText(const QString &method) {
             result=output.toBase64();
         } else {
             QMessageBox::warning(this, "RSA Error", "RSA encoding failed. Check key and input size.");
+            return;
         }
     } else {
         QMessageBox::warning(this, "Unknown Codec", "The selected decoding method is not supported.");
@@ -430,6 +435,10 @@ void MainWindow::decodeCurrentText(const QString &method) {
         QString key = QInputDialog::getText(this, "AES Key", "Enter decryption key:", QLineEdit::Password, "", &ok);
         if (!ok || key.isEmpty()) return;
         result = AESCodec::decode(text, key);
+        if (result.isEmpty()) {
+            QMessageBox::warning(this, "AES Error", "AES decoding failed. Check the key.");
+            return;
+        }
     } else if (method == "RSA") {
         QString key = promptForKeyFile("Select RSA Private Key", defaultRSAPrivateKeyPath);
 
@@ -440,7 +449,8 @@ void MainWindow::decodeCurrentText(const QString &method) {
         if (!output.isEmpty()) {
             result = QString::fromUtf8(output);
         } else {
-            QMessageBox::warning(this, "RSA Error", "RSA encoding failed. Check key and input size.");
+            QMessageBox::warning(this, "RSA Error", "RSA decoding failed. Check key and input size.");
+            return;
         }
     } else {
         QMessageBox::warning(this, "Unknown Codec", "The selected decoding method is not supported.");
