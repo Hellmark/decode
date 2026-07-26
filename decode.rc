@@ -3,8 +3,8 @@
 IDI_ICON1 ICON DISCARDABLE "decode.ico"
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 3,0,0,0
- PRODUCTVERSION 3,0,0,0
+ FILEVERSION 3,0,1,0
+ PRODUCTVERSION 3,0,1,0
  FILEFLAGSMASK 0x3fL
  FILEFLAGS 0x0L
  FILEOS 0x40004L
@@ -17,12 +17,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Hellmark Programming Group"
             VALUE "FileDescription", "Decode - Text Codec"
-            VALUE "FileVersion", "3.0.0.0"
+            VALUE "FileVersion", "3.0.1.0"
             VALUE "InternalName", "Decode"
-            VALUE "LegalCopyright", "© 2025 Hellmark Programming Group"
+            VALUE "LegalCopyright", "© 2026 Hellmark Programming Group"
             VALUE "OriginalFilename", "Decode.exe"
             VALUE "ProductName", "Decode"
-            VALUE "ProductVersion", "3.0.0.0"
+            VALUE "ProductVersion", "3.0.1.0"
         END
     END
     BLOCK "VarFileInfo"

@@ -152,7 +152,7 @@ int main(int argc, char *argv[]) {
             window.clearSession();
             return 0;
         } else {
-            out << "Not a recognized flag recognized flag.: " << arg << Qt::endl;
+            out << "Not a recognized flag.: " << arg << Qt::endl;
             if (QFileInfo::exists(arg) && QFileInfo(arg).isFile()) {
                 out << "URL recognized: " << arg << Qt::endl;
                 window.openFile(arg);
