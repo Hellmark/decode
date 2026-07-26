@@ -164,7 +164,7 @@ void MainWindow::setupUI() {
     encoderSelector = new QComboBox;
     encodeAction = new QAction(QIcon::fromTheme("list-add"), "Encode", this);
     decodeAction = new QAction(QIcon::fromTheme("list-remove"), "Decode", this);
-    encoderSelector->addItems({"Base64", "Binary", "Hex", "Caesar", "ROT13", "Morse", "Atbash", "Pig Latin", "AES", "RSA"});
+    encoderSelector->addItems({"Base64", "Binary", "Hex", "Caesar", "ROT13", "Morse", "Atbash", "PigLatin", "AES", "RSA"});
     codecToolbar->addWidget(encoderSelector);
     codecToolbar->addAction(encodeAction);
     codecToolbar->addAction(decodeAction);
