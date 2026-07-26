@@ -3,6 +3,7 @@
 - Fix session restore bug
 - Fix bug that could inadvertantly wipe document data if AES or RSA fails.
 - Fix issue with the browse buttons in settings for the encryption keys
+- Fixed issue with resetUILayer after reorganizing the preferences.
 
 2026/07/25
 - Fixed issue when selecting piglatin from the toolbar.

@@ -872,12 +872,14 @@ void MainWindow::clearRecentFiles() {
 void MainWindow::resetUILayout() {
 
     QSettings settings(configName, "Decode");
-    settings.remove("geometry");
-    settings.remove("windowState");
-    settings.remove("mainToolbarVisible");
-    settings.remove("codecToolbarVisible");
-    settings.remove("statusBarVisible");
-    settings.remove("maximized");
+    settings.remove("window/geometry");
+    settings.remove("window/windowState");
+    settings.remove("window/maximized");
+    settings.remove("window/normalSize");
+    settings.remove("window/normalPos");
+    settings.remove("ui/mainToolbarVisible");
+    settings.remove("ui/codecToolbarVisible");
+    settings.remove("ui/statusBarVisible");
     settings.remove("editor/font");
     settings.remove("editor/tabSize");
     addToolBar(Qt::TopToolBarArea, mainToolbar);
