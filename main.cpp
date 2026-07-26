@@ -102,11 +102,12 @@ void printUsage() {
         << "-o, --output         file path for the output file (optional)\n"
         << "-f, --function       function to be performed, either encode or decode\n"
         << "-c, --codec          codec to be used for the encoding or decoding\n"
+        << "-s, --shift         set the shift amount for caesar encoding.\n"
         << "-k, --key            the key to be used for encoding or decoding.\n"
         << "                     For AES, this is a text string like a password.\n"
         << "                     For RSA, this would be the path for the gpg key file.\n"
         << "-h, --help           for outputting this dialog.\n"
-        << "--clear-session      clears the session data used by GUI.\n";
+        << "--clearsession      clears the session data used by GUI.\n";
 }
 
 int main(int argc, char *argv[]) {
@@ -149,7 +150,7 @@ int main(int argc, char *argv[]) {
         } else if (arg == "--clearsession") {
             out << "Clear Session.\n";
             window.clearSession();
-            return app.exec();
+            return 0;
         } else {
             out << "Not a recognized flag recognized flag.: " << arg << Qt::endl;
             if (QFileInfo::exists(arg) && QFileInfo(arg).isFile()) {
