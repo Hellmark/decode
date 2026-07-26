@@ -682,6 +682,15 @@ void MainWindow::restoreSession() {
             QString content = i < contents.size() ? contents[i] : "";
             bool modified = (i < modifiedRaw.size()) ? modifiedRaw[i].toBool() : false;
 
+            // Unchanged saved file that still exists: reload fresh from disk
+            // (picks up any external edits) as a single tab.
+            if (!modified && !path.isEmpty() && QFileInfo::exists(path)) {
+                loadFile(path);
+                continue;
+            }
+
+            // Otherwise restore the saved content (unsaved edits, or a file
+            // that's since been moved/deleted) into one new tab.
             newTab();
             QTextEdit *editor = qobject_cast<QTextEdit *>(tabWidget->currentWidget());
             if (!editor) continue;
@@ -697,11 +706,6 @@ void MainWindow::restoreSession() {
             editor->blockSignals(false);
 
             markModified(editor, modified);
-
-            if (!modified && !path.isEmpty()) {
-                // Load from disk if unchanged
-                loadFile(path);
-            }
         }
     }
 
